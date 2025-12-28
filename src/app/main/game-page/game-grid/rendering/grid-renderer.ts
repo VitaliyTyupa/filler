@@ -118,6 +118,7 @@ export class GridRenderer {
   }
 
   init(container: HTMLElement, config: GridConfig, callbacks: RendererCallbacks): void {
+    console.log('[GridRenderer] init', { containerSize: { w: container.clientWidth, h: container.clientHeight }, config });
     this.validatePalette(config.palette);
     this.palette = config.palette.map((c) => new Color(c));
     this.appearance = new ColorFillAppearance(config.hoverLightness ?? 0.15);
@@ -137,6 +138,7 @@ export class GridRenderer {
   }
 
   setData(data: GridData): void {
+    console.log('[GridRenderer] setData', data);
     this.validateData(data);
     this.data = data;
     this.rebuildMesh();
@@ -150,6 +152,7 @@ export class GridRenderer {
   setHover(cellId: number | -1): void {
     if (!this.mesh || !this.data) return;
     if (cellId === this.hoverId) return;
+    console.log('[GridRenderer] hover', { cellId });
     this.hoverId = cellId;
     this.appearance.applyHover(this.mesh, this.palette, this.data.colors, cellId);
     this.renderFrame();
@@ -168,10 +171,12 @@ export class GridRenderer {
 
   handleClick(cellId: number): void {
     if (cellId < 0) return;
+    console.log('[GridRenderer] click', { cellId });
     this.callbacks?.onClick?.(cellId);
   }
 
   resize(width: number, height: number): void {
+    console.log('[GridRenderer] resize', { width, height });
     this.width = width;
     this.height = height;
     if (!this.renderer || !this.camera) return;
@@ -201,6 +206,11 @@ export class GridRenderer {
 
   private rebuildMesh(): void {
     if (!this.scene || !this.data) return;
+    console.log('[GridRenderer] rebuildMesh', {
+      instances: this.data.rows * this.data.cols,
+      rows: this.data.rows,
+      cols: this.data.cols,
+    });
     this.mesh?.removeFromParent();
     this.mesh?.geometry.dispose();
 
@@ -217,6 +227,7 @@ export class GridRenderer {
   private updateInstanceTransforms(): void {
     if (!this.mesh || !this.layout || !this.data) return;
     const { cellWidth, cellHeight, offsetX, offsetY } = this.layout;
+    console.log('[GridRenderer] update transforms', { cellWidth, cellHeight, offsetX, offsetY });
     const translation = new Matrix4();
     const scale = new Matrix4().makeScale(cellWidth, cellHeight, 1);
     const matrix = new Matrix4();

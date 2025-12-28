@@ -18,7 +18,7 @@ import { GridData, GridRenderer } from './rendering/grid-renderer';
   standalone: true,
   imports: [],
   templateUrl: './game-grid.component.html',
-  styleUrl: './game-grid.component.scss',
+  styleUrls: ['./game-grid.component.scss'],
 })
 export class GameGridComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
   @Input() grid?: GridData;
@@ -33,6 +33,7 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnChanges, OnDe
   ngOnInit(): void {
     if (!this.grid) {
       this.grid = this.createMockGrid();
+      console.log('[GameGridComponent] Using mock grid', this.grid);
     }
   }
 
@@ -46,7 +47,9 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnChanges, OnDe
         onClick: (cellId) => this.cellClick.emit(cellId),
       }
     );
+    console.log('[GameGridComponent] Renderer initialized with palette', DEFAULT_PALETTE);
     this.renderer.setData(this.grid!);
+    console.log('[GameGridComponent] Grid data set', this.grid);
     this.observeResize(container);
     this.isReady = true;
   }
@@ -65,12 +68,14 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnChanges, OnDe
   onPointerMove(event: PointerEvent): void {
     if (!this.isReady) return;
     const cellId = this.getCellFromEvent(event);
+    console.log('[GameGridComponent] Pointer move', { cellId });
     this.renderer.setHover(cellId);
   }
 
   onClick(event: MouseEvent): void {
     if (!this.isReady) return;
     const cellId = this.getCellFromEvent(event);
+    console.log('[GameGridComponent] Click', { cellId });
     this.renderer.handleClick(cellId);
   }
 
@@ -93,6 +98,7 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnChanges, OnDe
     this.resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
       const { width, height } = entry.contentRect;
+      console.log('[GameGridComponent] Resize', { width, height });
       this.renderer.resize(width, height);
     });
     this.resizeObserver.observe(container);
@@ -106,6 +112,7 @@ export class GameGridComponent implements OnInit, AfterViewInit, OnChanges, OnDe
     for (let i = 0; i < colors.length; i++) {
       colors[i] = Math.floor(Math.random() * paletteSize);
     }
+    console.log('[GameGridComponent] Mock grid generated');
     return { rows, cols, paletteSize, colors };
   }
 }
