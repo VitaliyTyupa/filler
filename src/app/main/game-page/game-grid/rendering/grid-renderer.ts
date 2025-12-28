@@ -1,5 +1,6 @@
 import {
   Color,
+  DoubleSide,
   InstancedBufferAttribute,
   InstancedMesh,
   Matrix4,
@@ -128,6 +129,7 @@ export class GridRenderer {
     this.scene = new Scene();
     this.camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
     this.camera.position.z = 2;
+    this.camera.lookAt(0, 0, 0);
 
     this.renderer = new WebGLRenderer({ antialias: true });
     if (config.clearColor) {
@@ -229,6 +231,7 @@ export class GridRenderer {
 
     const geometry = new PlaneGeometry(1, 1);
     const material = new MeshBasicMaterial({ color: 0xffffff });
+    material.side = DoubleSide; // DoubleSide to avoid back-face culling hiding the grid (temporary debug guard)
     this.appearance.setupMaterial(material);
     const instanceCount = this.data.rows * this.data.cols;
     this.mesh = new InstancedMesh(geometry, material, instanceCount);
