@@ -1,5 +1,6 @@
 import {
   Color,
+  InstancedBufferAttribute,
   InstancedMesh,
   Matrix4,
   MeshBasicMaterial,
@@ -133,6 +134,7 @@ export class GridRenderer {
       this.renderer.setClearColor(config.clearColor);
     }
     this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.domElement.style.display = 'block';
     container.appendChild(this.renderer.domElement);
     this.resize(container.clientWidth, container.clientHeight);
   }
@@ -176,6 +178,17 @@ export class GridRenderer {
   }
 
   resize(width: number, height: number): void {
+    if ((width === 0 || height === 0) && this.container) {
+      const rect = this.container.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+      console.log('[GridRenderer] resize fallback to bounding rect', { width, height });
+    }
+    if (width === 0 || height === 0) {
+      console.warn('[GridRenderer] resize ignored because container has no size');
+      return;
+    }
+
     console.log('[GridRenderer] resize', { width, height });
     this.width = width;
     this.height = height;
@@ -215,13 +228,20 @@ export class GridRenderer {
     this.mesh?.geometry.dispose();
 
     const geometry = new PlaneGeometry(1, 1);
-    const material = new MeshBasicMaterial();
+    const material = new MeshBasicMaterial({ color: 0xffffff });
     this.appearance.setupMaterial(material);
-    this.mesh = new InstancedMesh(geometry, material, this.data.rows * this.data.cols);
+    const instanceCount = this.data.rows * this.data.cols;
+    this.mesh = new InstancedMesh(geometry, material, instanceCount);
+    this.mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(instanceCount * 3), 3);
+    this.mesh.instanceMatrix.setUsage(35048 /* DynamicDrawUsage */);
     this.scene.add(this.mesh);
     this.layout = this.layoutCalculator.compute(this.width, this.height, this.data.rows, this.data.cols);
     this.updateInstanceTransforms();
     this.appearance.applyBaseColors(this.mesh, this.palette, this.data.colors);
+    console.log('[GridRenderer] mesh ready', {
+      layout: this.layout,
+      firstColors: Array.from({ length: Math.min(8, this.data.colors.length) }, (_, i) => this.data!.colors[i]),
+    });
   }
 
   private updateInstanceTransforms(): void {
