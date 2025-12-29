@@ -22,6 +22,9 @@ export class ColorPickerComponent {
   @Input({ required: true })
   validMovesByUser!: Record<number, boolean[]>;
 
+  @Input()
+  isBusy = false;
+
   @Output()
   readonly colorPick = new EventEmitter<{ userId: number; colorIndex: number; colorHex: string }>();
 

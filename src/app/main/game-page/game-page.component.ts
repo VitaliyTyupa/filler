@@ -1,7 +1,10 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { GameGrid } from './game-grid';
+import { Router } from '@angular/router';
+import { DEFAULT_PALETTE_10, getPalette } from '../../game.constants';
+import { GameSessionService, GameSettings } from '../../game-session.service';
 import { ColorPickerComponent } from './color-picker/color-picker.component';
-import { DEFAULT_PALETTE, GameService, GameState, PlayerId } from './game.service';
+import { GameGrid } from './game-grid';
+import { GameService, GameState, PlayerId } from './game.service';
 
 @Component({
   selector: 'fil-game-page',
@@ -20,24 +23,48 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   private boardCanvas?: ElementRef<HTMLCanvasElement>;
 
   private grid?: GameGrid;
-  private readonly gridConfig = { cols: 25, rows: 20 };
+  private settings?: GameSettings;
+  private baseUsers: Array<{ id: number; name: string; isCpu: boolean }> = [];
 
-  private baseUsers: Array<{ id: number; name: string }> = [];
-  users: Array<{ id: number; name: string; currentScore: number }> = [];
+  users: Array<{ id: number; name: string; currentScore: number; isCpu: boolean }> = [];
   palette: string[] = [];
   state?: GameState;
   validMovesByUser: Record<number, boolean[]> = {};
+  isCpuMode = false;
+  cpuPlayerId?: PlayerId;
+  isBusy = false;
 
-  constructor(private readonly gameService: GameService) {}
+  constructor(
+    private readonly gameService: GameService,
+    private readonly gameSession: GameSessionService,
+    private readonly router: Router
+  ) {}
 
   ngOnInit(): void {
-    this.baseUsers = this.gameService.getUsers();
-    this.palette = this.gameService.getPalette();
+    if (!this.gameSession.hasSettings()) {
+      this.router.navigateByUrl('/start');
+      return;
+    }
+
+    this.settings = this.gameSession.getSettings()!;
+
+    const { board, paletteSize, players, mode } = this.settings;
+
+    this.isCpuMode = mode === 'cpu';
+    this.cpuPlayerId = players.find((player) => player.isCpu)?.id as PlayerId | undefined;
+
+    this.palette = getPalette(paletteSize);
+
+    this.baseUsers = players.map((player) => ({
+      id: player.id,
+      name: player.name,
+      isCpu: player.isCpu ?? false
+    }));
 
     this.state = this.gameService.generateInitialState({
-      cols: this.gridConfig.cols,
-      rows: this.gridConfig.rows,
-      paletteSize: this.palette.length || DEFAULT_PALETTE.length
+      cols: board.cols,
+      rows: board.rows,
+      paletteSize: this.palette.length
     });
 
     this.updateUsersWithScore();
@@ -56,7 +83,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       width: clientWidth,
       height: clientHeight,
       grid: { cols: this.state.cols, rows: this.state.rows, colors: this.state.color },
-      palette: this.palette.length ? this.palette : DEFAULT_PALETTE
+      palette: this.palette.length ? this.palette : DEFAULT_PALETTE_10
     });
 
     this.grid.init();
@@ -80,18 +107,35 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
   onColorPick(event: { userId: number; colorIndex: number; colorHex: string }): void {
-    if (!this.state) {
+    if (!this.state || this.isBusy) {
       return;
     }
 
-    this.state = this.gameService.applyMove(this.state, event.userId as PlayerId, event.colorIndex);
-    this.updateUsersWithScore();
-    this.updateValidMoves();
+    this.applyMoveAndUpdate(event.userId as PlayerId, event.colorIndex);
 
-    console.log('current player', this.state.currentPlayer, 'score', this.state.score);
+    if (this.afterMoveCheck()) {
+      this.isBusy = false;
+      return;
+    }
 
-    if (this.grid) {
-      this.grid.setGridData({ owner: this.state.owner, color: this.state.color });
+    if (this.isCpuMode && this.state.currentPlayer === this.cpuPlayerId && this.cpuPlayerId) {
+      this.isBusy = true;
+      setTimeout(() => {
+        if (!this.state || !this.cpuPlayerId) {
+          this.isBusy = false;
+          return;
+        }
+
+        const cpuColor = this.gameService.pickCpuMove(this.state, this.cpuPlayerId);
+        this.applyMoveAndUpdate(this.cpuPlayerId, cpuColor);
+
+        if (this.afterMoveCheck()) {
+          this.isBusy = false;
+          return;
+        }
+
+        this.isBusy = false;
+      }, 1000);
     }
   }
 
@@ -118,5 +162,36 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       ...user,
       currentScore: this.state?.score?.[user.id] ?? 0
     }));
+  }
+
+  private applyMoveAndUpdate(playerId: PlayerId, colorIndex: number): void {
+    if (!this.state) {
+      return;
+    }
+
+    this.state = this.gameService.applyMove(this.state, playerId, colorIndex);
+    this.updateUsersWithScore();
+    this.updateValidMoves();
+
+    console.log('scores', this.state.score[1], this.state.score[2]);
+
+    if (this.grid) {
+      this.grid.setGridData({ owner: this.state.owner, color: this.state.color });
+    }
+  }
+
+  private afterMoveCheck(): boolean {
+    if (!this.state) {
+      return false;
+    }
+
+    if (this.gameService.isGameOver(this.state)) {
+      const result = this.gameService.getWinner(this.state);
+      this.gameSession.setResult(result);
+      this.router.navigateByUrl('/final');
+      return true;
+    }
+
+    return false;
   }
 }

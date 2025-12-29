@@ -1,0 +1,32 @@
+<section class="final-page" *ngIf="result && settings; else redirecting">
+  <header>
+    <h1>Фінальний результат</h1>
+    <p class="subtitle">Режим: {{ settings.mode | titlecase }} • Поле: {{ settings.board.cols }}×{{ settings.board.rows }}</p>
+  </header>
+
+  <div class="summary">
+    <div class="score-card" [class.winner]="result.winner === 1">
+      <p class="label">Player 1</p>
+      <h2>{{ settings.players[0].name }}</h2>
+      <p class="score">{{ result.score1 }}</p>
+    </div>
+    <div class="score-card" [class.winner]="result.winner === 2">
+      <p class="label">Player 2</p>
+      <h2>{{ settings.players[1].name }}</h2>
+      <p class="score">{{ result.score2 }}</p>
+    </div>
+  </div>
+
+  <p class="winner" *ngIf="result.winner === 0">Нічия</p>
+  <p class="winner" *ngIf="result.winner === 1">Переміг Player 1: {{ settings.players[0].name }}</p>
+  <p class="winner" *ngIf="result.winner === 2">Переміг Player 2: {{ settings.players[1].name }}</p>
+
+  <div class="actions">
+    <button type="button" (click)="restart()">Почати гру з початку</button>
+    <button type="button" class="secondary" (click)="newGame()">Налаштувати нову гру</button>
+  </div>
+</section>
+
+<ng-template #redirecting>
+  <p>Переадресація...</p>
+</ng-template>

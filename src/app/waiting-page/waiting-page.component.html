@@ -1,0 +1,51 @@
+<section class="waiting-page" *ngIf="settings as config">
+  <h1>Waiting for player</h1>
+
+  <mat-tab-group>
+    <mat-tab label="Lobby">
+      <div class="lobby">
+        <div class="summary">
+          <div class="summary-row">
+            <span class="label">Board</span>
+            <span class="value">{{ config.board.cols }}×{{ config.board.rows }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">Palette size</span>
+            <span class="value">{{ config.paletteSize }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="label">Player 1</span>
+            <span class="value">{{ config.players[0]?.name }}</span>
+          </div>
+        </div>
+
+        <div class="status">
+          @if (isWaiting) {
+            <div class="spinner">
+              <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+              <p>Waiting for Player 2…</p>
+            </div>
+          } @else {
+            <div class="connected">
+              <p class="status-text">Player 2 joined: <strong>{{ player2Name }}</strong></p>
+              <div class="actions">
+                <button type="button" (click)="onReject()">Reject</button>
+                <button type="button" class="primary" (click)="onStartGame()">Start game</button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </mat-tab>
+    <mat-tab label="Info">
+      <div class="info">
+        <p>Online mode is a work in progress. You can review your selected settings while waiting.</p>
+        <ul>
+          <li>Mode: {{ config.mode }}</li>
+          <li>Board: {{ config.board.cols }}×{{ config.board.rows }}</li>
+          <li>Palette size: {{ config.paletteSize }}</li>
+        </ul>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</section>
