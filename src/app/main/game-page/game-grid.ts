@@ -28,7 +28,7 @@ export type GameGridParams = {
   canvas: HTMLCanvasElement;
   width: number;
   height: number;
-  grid: { rows: number; cols: number; cellSize: number };
+  grid: { rows: number; cols: number; colors: Uint8Array };
   palette?: string[];
 };
 
@@ -36,7 +36,9 @@ export class GameGrid {
   private readonly canvas: HTMLCanvasElement;
   private width: number;
   private height: number;
-  private readonly gridConfig: { rows: number; cols: number; cellSize: number };
+  private readonly gridConfig: { rows: number; cols: number; colors: Uint8Array };
+  private cellWidth = 1;
+  private cellHeight = 1;
 
   private renderer?: WebGLRenderer;
   private camera?: OrthographicCamera;
@@ -57,6 +59,7 @@ export class GameGrid {
     this.width = params.width;
     this.height = params.height;
     this.gridConfig = params.grid;
+    this.colorData = params.grid.colors;
 
     if (params.palette) {
       this.setPalette(params.palette);
@@ -66,7 +69,8 @@ export class GameGrid {
   init(): void {
     this.initializeScene();
     this.createBoard();
-    this.resize(this.width, this.height);
+    this.updateLayout(this.width, this.height);
+    this.refreshAllColors();
   }
 
   start(): void {
@@ -93,7 +97,7 @@ export class GameGrid {
     }
   }
 
-  resize(width: number, height: number): void {
+  updateLayout(width: number, height: number): void {
     this.width = width;
     this.height = height;
 
@@ -103,28 +107,21 @@ export class GameGrid {
 
     this.renderer.setSize(width, height, false);
 
-    const viewWidth = this.gridConfig.cols * this.gridConfig.cellSize;
-    const viewHeight = this.gridConfig.rows * this.gridConfig.cellSize;
-    const gridAspect = viewWidth / viewHeight;
-    const containerAspect = width / height || 1;
+    this.cellWidth = width / this.gridConfig.cols;
+    this.cellHeight = height / this.gridConfig.rows;
 
-    if (containerAspect > gridAspect) {
-      const scale = containerAspect / gridAspect;
-      this.camera.left = (-viewWidth / 2) * scale;
-      this.camera.right = (viewWidth / 2) * scale;
-      this.camera.top = viewHeight / 2;
-      this.camera.bottom = -viewHeight / 2;
-    } else {
-      const scale = gridAspect / containerAspect;
-      this.camera.left = -viewWidth / 2;
-      this.camera.right = viewWidth / 2;
-      this.camera.top = (viewHeight / 2) * scale;
-      this.camera.bottom = (-viewHeight / 2) * scale;
-    }
+    const gridWidth = this.cellWidth * this.gridConfig.cols;
+    const gridHeight = this.cellHeight * this.gridConfig.rows;
 
+    this.camera.left = -gridWidth / 2;
+    this.camera.right = gridWidth / 2;
+    this.camera.top = gridHeight / 2;
+    this.camera.bottom = -gridHeight / 2;
     this.camera.near = 0.1;
     this.camera.far = 100;
     this.camera.updateProjectionMatrix();
+
+    this.updateInstanceLayout();
   }
 
   setPalette(palette: string[]): void {
@@ -209,9 +206,9 @@ export class GameGrid {
   private createBoard(): void {
     if (!this.scene) return;
 
-    const { cols, rows, cellSize } = this.gridConfig;
+    const { cols, rows } = this.gridConfig;
 
-    const cellGeometry = new BoxGeometry(cellSize * 0.92, cellSize * 0.92, 0.1);
+    const cellGeometry = new BoxGeometry(0.98, 0.98, 0.1);
 
     // add WHITE vertex colors so instanceColor can tint it
     const vCount = cellGeometry.getAttribute('position').count;
@@ -230,28 +227,43 @@ export class GameGrid {
     this.boardMesh = instancedMesh;
 
     const tempObject = new Object3D();
-    const xOffset = ((cols - 1) * cellSize) / 2;
-    const yOffset = ((rows - 1) * cellSize) / 2;
+
+    for (let index = 0; index < cols * rows; index++) {
+      tempObject.position.set(0, 0, 0);
+      tempObject.updateMatrix();
+      instancedMesh.setMatrixAt(index, tempObject.matrix);
+
+      const c = this.paletteColors[0] ?? this.defaultColor;
+      instancedMesh.setColorAt(index, c);
+    }
+
+    if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+
+    this.scene.add(instancedMesh);
+  }
+
+  private updateInstanceLayout(): void {
+    if (!this.boardMesh) {
+      return;
+    }
+
+    const { cols, rows } = this.gridConfig;
+    const xOffset = ((cols - 1) * this.cellWidth) / 2;
+    const yOffset = ((rows - 1) * this.cellHeight) / 2;
+    const tempObject = new Object3D();
 
     let index = 0;
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        tempObject.position.set(col * cellSize - xOffset, yOffset - row * cellSize, 0);
+        tempObject.position.set(col * this.cellWidth - xOffset, yOffset - row * this.cellHeight, 0);
+        tempObject.scale.set(this.cellWidth, this.cellHeight, 1);
         tempObject.updateMatrix();
-        instancedMesh.setMatrixAt(index, tempObject.matrix);
-
-        // set color DIRECTLY (don’t rely on boardMesh being set later)
-        const c = this.paletteColors[0] ?? this.defaultColor;
-        instancedMesh.setColorAt(index, c);
-
+        this.boardMesh.setMatrixAt(index, tempObject.matrix);
         index++;
       }
     }
 
-    instancedMesh.instanceMatrix.needsUpdate = true;
-    if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
-
-    this.scene.add(instancedMesh);
+    this.boardMesh.instanceMatrix.needsUpdate = true;
   }
 
 

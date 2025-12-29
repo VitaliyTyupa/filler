@@ -1,5 +1,8 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { GameGrid } from './game-grid';
+import { GameService } from './game.service';
+
+const DEFAULT_PALETTE = ['#2c7be5', '#6f42c1', '#f6c343', '#e63757', '#00d97e'];
 
 @Component({
   selector: 'fil-game-page',
@@ -16,10 +19,9 @@ export class GamePageComponent implements AfterViewInit, OnDestroy {
   private boardCanvas?: ElementRef<HTMLCanvasElement>;
 
   private grid?: GameGrid;
-  private readonly gridWidth = 40;
-  private readonly gridHeight = 25;
-  private readonly cellSize = 1;
-  private readonly palette = ['#2c7be5'];
+  private readonly gridConfig = { cols: 70, rows: 50};
+
+  constructor(private readonly gameService: GameService) {}
 
   ngAfterViewInit(): void {
     if (!this.boardContainer || !this.boardCanvas) {
@@ -27,13 +29,19 @@ export class GamePageComponent implements AfterViewInit, OnDestroy {
     }
 
     const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
+    const paletteSize = DEFAULT_PALETTE.length;
+    const gridConfig = this.gameService.createGameConfig({
+      cols: this.gridConfig.cols,
+      rows: this.gridConfig.rows,
+      paletteSize
+    });
 
     this.grid = new GameGrid({
       canvas: this.boardCanvas.nativeElement,
       width: clientWidth,
       height: clientHeight,
-      grid: { rows: this.gridHeight, cols: this.gridWidth, cellSize: this.cellSize },
-      palette: this.palette
+      grid: gridConfig,
+      palette: DEFAULT_PALETTE
     });
 
     this.grid.init();
@@ -52,6 +60,6 @@ export class GamePageComponent implements AfterViewInit, OnDestroy {
     }
 
     const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
-    this.grid.resize(clientWidth, clientHeight);
+    this.grid.updateLayout(clientWidth, clientHeight);
   };
 }
