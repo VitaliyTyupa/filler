@@ -29,6 +29,11 @@ export class FinalPageComponent implements OnInit {
   }
 
   restart(): void {
+    this.gameSession.clearResult();
+    this.router.navigateByUrl('/game');
+  }
+
+  newGame(): void {
     this.gameSession.clear();
     this.router.navigateByUrl('/start');
   }

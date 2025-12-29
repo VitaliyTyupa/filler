@@ -54,17 +54,31 @@ header {
   margin: 12px 0 20px;
 }
 
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 button {
-  display: block;
-  margin: 0 auto;
   padding: 10px 16px;
   background: #2563eb;
   color: white;
   border: none;
   border-radius: 8px;
   cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+button.secondary {
+  background: #334155;
 }
 
 button:hover {
   background: #1d4ed8;
+}
+
+button.secondary:hover {
+  background: #1f2937;
 }
