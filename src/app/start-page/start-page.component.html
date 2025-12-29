@@ -1,13 +1,13 @@
 <section class="start-page">
   <mat-card class="start-card">
     <header class="start-page__header">
-      <h1>Start Game</h1>
-      <p>Configure your match settings to begin.</p>
+      <h1>Раз, два, три - почали!</h1>
+      <h3>Кольори готові. Поле чекає. Хто сьогодні головний? 😏</h3>
     </header>
 
     <form class="start-form" [formGroup]="form" (ngSubmit)="onSubmit()">
       <div class="form-row">
-        <p class="form-label">Mode</p>
+        <p class="form-label">Як ти хочеш сьогодні грати?</p>
         <mat-radio-group class="mode-options" formControlName="mode">
           @for (mode of modes; track mode) {
             <mat-radio-button class="mode-option" [value]="mode">{{ modeLabels[mode] }}</mat-radio-button>
