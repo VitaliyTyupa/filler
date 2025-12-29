@@ -25,6 +25,7 @@ export class FinalPageComponent implements OnInit {
 
     if (!this.result || !this.settings) {
       this.router.navigateByUrl('/start');
+      return;
     }
   }
 
