@@ -103,6 +103,27 @@ export class GameService {
     return moves;
   }
 
+  isGameOver(state: GameState): boolean {
+    const totalCells = state.cols * state.rows;
+    const occupiedCells = state.score[1] + state.score[2];
+    return occupiedCells === totalCells;
+  }
+
+  getWinner(state: GameState): { winner: 1 | 2 | 0; score1: number; score2: number } {
+    const score1 = state.score[1];
+    const score2 = state.score[2];
+
+    if (score1 > score2) {
+      return { winner: 1, score1, score2 };
+    }
+
+    if (score2 > score1) {
+      return { winner: 2, score1, score2 };
+    }
+
+    return { winner: 0, score1, score2 };
+  }
+
   pickCpuMove(state: GameState, cpuPlayerId: PlayerId): number {
     const validMoves = this.getValidMoves(state, cpuPlayerId);
     const adjacentColors = new Set<number>();
