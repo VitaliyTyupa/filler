@@ -1,8 +1,11 @@
 <div class="color-picker">
   @for (user of users; track user.id) {
-    <mat-card class="user" appearance="outlined">
+    <mat-card appearance="outlined">
       <mat-card-content>
-      <div class="user-name">{{ user.name }}</div>
+      <div class="user">
+        <div class="user-name">Player: <u>{{ user.name }}</u></div>
+        <div class="user-score">Score: <u>{{ user.currentScore }}</u></div>
+      </div>
       <div class="palette">
         @for (color of palette; let colorIndex = $index; track colorIndex) {
           <button
@@ -10,6 +13,7 @@
             type="button"
             class="palette-color"
             [style.background-color]="color"
+            [disabled]="user.id !== activeUserId || !validMovesByUser[user.id]?.[colorIndex]"
             (click)="handleColorPick(user.id, colorIndex, color)"
           ></button>
         }

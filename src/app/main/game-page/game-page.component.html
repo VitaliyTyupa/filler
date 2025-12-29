@@ -1,5 +1,11 @@
 <div class="game-page">
-  <fil-color-picker [users]="users" [palette]="palette" (colorPick)="onColorPick($event)"></fil-color-picker>
+  <fil-color-picker
+    [users]="users"
+    [palette]="palette"
+    [activeUserId]="state?.currentPlayer ?? 0"
+    [validMovesByUser]="validMovesByUser"
+    (colorPick)="onColorPick($event)"
+  ></fil-color-picker>
   <div class="board" #boardContainer>
     <canvas #boardCanvas></canvas>
   </div>

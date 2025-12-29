@@ -11,10 +11,16 @@ import {MatCard, MatCardContent} from '@angular/material/card';
 })
 export class ColorPickerComponent {
   @Input({ required: true })
-  users: Array<{ id: number; name: string }> = [];
+  users: Array<{ id: number; name: string; currentScore: number }> = [];
 
   @Input({ required: true })
   palette: string[] = [];
+
+  @Input({ required: true })
+  activeUserId!: number;
+
+  @Input({ required: true })
+  validMovesByUser!: Record<number, boolean[]>;
 
   @Output()
   readonly colorPick = new EventEmitter<{ userId: number; colorIndex: number; colorHex: string }>();
