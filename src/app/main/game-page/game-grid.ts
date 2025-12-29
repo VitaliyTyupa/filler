@@ -1,13 +1,12 @@
 import {
-  BoxGeometry,
+  BoxGeometry, BufferAttribute,
   Color,
   InstancedMesh,
   MeshBasicMaterial,
   Object3D,
   OrthographicCamera,
   Scene,
-  WebGLRenderer,
-  BufferAttribute
+  WebGLRenderer
 } from 'three';
 
 export type GameGridData = {
@@ -214,15 +213,13 @@ export class GameGrid {
 
     const cellGeometry = new BoxGeometry(cellSize * 0.92, cellSize * 0.92, 0.1);
 
-// add WHITE vertex colors so instanceColor can tint it
+    // add WHITE vertex colors so instanceColor can tint it
     const vCount = cellGeometry.getAttribute('position').count;
     const vColors = new Float32Array(vCount * 3);
     vColors.fill(1); // white
     cellGeometry.setAttribute('color', new BufferAttribute(vColors, 3));
 
-    const cellMaterial = new MeshBasicMaterial({
-      color: 0xffffff,
-      vertexColors: true,
+    const cellMaterial = new MeshBasicMaterial({ color: 0xffffff, vertexColors: true,
     });
     cellMaterial.vertexColors = true;
     cellMaterial.needsUpdate = true;
