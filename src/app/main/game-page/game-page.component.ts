@@ -1,9 +1,7 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { GameGrid } from './game-grid';
-import { GameService } from './game.service';
-import {ColorPickerComponent} from './color-picker/color-picker.component';
-
-const DEFAULT_PALETTE = ['#2c7be5', '#6f42c1', '#f6c343', '#e63757', '#00d97e'];
+import { ColorPickerComponent } from './color-picker/color-picker.component';
+import { DEFAULT_PALETTE, GameService } from './game.service';
 
 @Component({
   selector: 'fil-game-page',
@@ -14,7 +12,7 @@ const DEFAULT_PALETTE = ['#2c7be5', '#6f42c1', '#f6c343', '#e63757', '#00d97e'];
   templateUrl: './game-page.component.html',
   styleUrl: './game-page.component.scss'
 })
-export class GamePageComponent implements AfterViewInit, OnDestroy {
+export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('boardContainer', { static: true })
   private boardContainer?: ElementRef<HTMLDivElement>;
 
@@ -22,9 +20,17 @@ export class GamePageComponent implements AfterViewInit, OnDestroy {
   private boardCanvas?: ElementRef<HTMLCanvasElement>;
 
   private grid?: GameGrid;
-  private readonly gridConfig = { cols: 120, rows: 100};
+  private readonly gridConfig = { cols: 120, rows: 100 };
+
+  users: Array<{ id: number; name: string }> = [];
+  palette: string[] = [];
 
   constructor(private readonly gameService: GameService) {}
+
+  ngOnInit(): void {
+    this.users = this.gameService.getUsers();
+    this.palette = this.gameService.getPalette();
+  }
 
   ngAfterViewInit(): void {
     if (!this.boardContainer || !this.boardCanvas) {
@@ -32,7 +38,7 @@ export class GamePageComponent implements AfterViewInit, OnDestroy {
     }
 
     const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
-    const paletteSize = DEFAULT_PALETTE.length;
+    const paletteSize = this.palette.length || DEFAULT_PALETTE.length;
     const gridConfig = this.gameService.createGameConfig({
       cols: this.gridConfig.cols,
       rows: this.gridConfig.rows,
@@ -44,7 +50,7 @@ export class GamePageComponent implements AfterViewInit, OnDestroy {
       width: clientWidth,
       height: clientHeight,
       grid: gridConfig,
-      palette: DEFAULT_PALETTE
+      palette: this.palette.length ? this.palette : DEFAULT_PALETTE
     });
 
     this.grid.init();
@@ -65,4 +71,8 @@ export class GamePageComponent implements AfterViewInit, OnDestroy {
     const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
     this.grid.updateLayout(clientWidth, clientHeight);
   };
+
+  onColorPick(event: { userId: number; colorIndex: number; colorHex: string }): void {
+    console.log('colorPick', event);
+  }
 }
