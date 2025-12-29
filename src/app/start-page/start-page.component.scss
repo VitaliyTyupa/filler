@@ -2,6 +2,8 @@
   display: flex;
   justify-content: center;
   padding: 2.5rem 1.5rem;
+  flex-direction: column;
+  align-items: center;
 }
 
 .start-card {
@@ -9,6 +11,10 @@
   max-width: 720px;
   padding: 1.5rem;
   box-sizing: border-box;
+}
+
+.rules-card {
+  margin-top: 1.5rem;
 }
 
 .start-page__header {
@@ -59,4 +65,11 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 0.5rem;
+}
+
+.rules-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.5rem;
 }

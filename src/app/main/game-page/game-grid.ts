@@ -1,11 +1,14 @@
 import {
   BoxGeometry, BufferAttribute,
   Color,
+  CanvasTexture,
   InstancedMesh,
   MeshBasicMaterial,
   Object3D,
   OrthographicCamera,
   Scene,
+  Sprite,
+  SpriteMaterial,
   WebGLRenderer
 } from 'three';
 
@@ -45,6 +48,8 @@ export class GameGrid {
   private scene?: Scene;
   private boardMesh?: InstancedMesh;
   private animationFrameId?: number;
+  private player1StartMarker?: Sprite;
+  private player2StartMarker?: Sprite;
 
   private paletteColors: Color[] = [];
   private ownerData?: Uint8Array;
@@ -122,6 +127,7 @@ export class GameGrid {
     this.camera.updateProjectionMatrix();
 
     this.updateInstanceLayout();
+    this.updateStartMarkerTransforms();
   }
 
   setPalette(palette: string[]): void {
@@ -174,6 +180,9 @@ export class GameGrid {
 
     this.renderer?.dispose();
     this.boardMesh?.geometry.dispose();
+
+    this.disposeMarker(this.player1StartMarker);
+    this.disposeMarker(this.player2StartMarker);
 
     if (this.boardMesh?.material) {
       if (Array.isArray(this.boardMesh.material)) {
@@ -240,6 +249,8 @@ export class GameGrid {
     if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
 
     this.scene.add(instancedMesh);
+
+    this.createStartMarkers();
   }
 
   private updateInstanceLayout(): void {
@@ -264,6 +275,78 @@ export class GameGrid {
     }
 
     this.boardMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  private createStartMarkers(): void {
+    if (!this.scene) {
+      return;
+    }
+
+    const player1Marker = this.createMarkerSprite('1', '#00d97e', '#0a1f0f');
+    const player2Marker = this.createMarkerSprite('2', '#e63757', '#2a0c12');
+
+    player1Marker.raycast = () => {};
+    player2Marker.raycast = () => {};
+
+    this.player1StartMarker = player1Marker;
+    this.player2StartMarker = player2Marker;
+
+    this.scene.add(player1Marker);
+    this.scene.add(player2Marker);
+  }
+
+  private createMarkerSprite(label: string, background: string, textColor: string): Sprite {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+
+    const ctx = canvas.getContext('2d');
+
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = background;
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width * 0.45, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = textColor;
+      ctx.font = 'bold 140px Inter, Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, canvas.width / 2, canvas.height / 2 + 6);
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    const material = new SpriteMaterial({ map: texture, depthWrite: false });
+    const sprite = new Sprite(material);
+    sprite.renderOrder = 1;
+
+    return sprite;
+  }
+
+  private updateStartMarkerTransforms(): void {
+    if (!this.player1StartMarker || !this.player2StartMarker) {
+      return;
+    }
+
+    const { cols, rows } = this.gridConfig;
+    const xOffset = ((cols - 1) * this.cellWidth) / 2;
+    const yOffset = ((rows - 1) * this.cellHeight) / 2;
+    const markerSize = Math.min(this.cellWidth, this.cellHeight) * 0.6;
+    const zOffset = 0.6;
+
+    const setMarker = (marker: Sprite, index: number) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      marker.position.set(col * this.cellWidth - xOffset, yOffset - row * this.cellHeight, zOffset);
+      marker.scale.set(markerSize, markerSize, 1);
+    };
+
+    setMarker(this.player1StartMarker, 0);
+    setMarker(this.player2StartMarker, cols * rows - 1);
   }
 
 
@@ -295,5 +378,18 @@ export class GameGrid {
       this.defaultColor;
 
     this.boardMesh.setColorAt(index, color);
+  }
+
+  private disposeMarker(marker?: Sprite): void {
+    if (!marker) {
+      return;
+    }
+
+    if (marker.material instanceof SpriteMaterial) {
+      marker.material.map?.dispose();
+      marker.material.dispose();
+    }
+
+    this.scene?.remove(marker);
   }
 }
