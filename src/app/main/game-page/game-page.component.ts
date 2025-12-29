@@ -1,13 +1,16 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { GameGrid } from './game-grid';
 import { GameService } from './game.service';
+import {ColorPickerComponent} from './color-picker/color-picker.component';
 
 const DEFAULT_PALETTE = ['#2c7be5', '#6f42c1', '#f6c343', '#e63757', '#00d97e'];
 
 @Component({
   selector: 'fil-game-page',
   standalone: true,
-  imports: [],
+  imports: [
+    ColorPickerComponent
+  ],
   templateUrl: './game-page.component.html',
   styleUrl: './game-page.component.scss'
 })
@@ -19,7 +22,7 @@ export class GamePageComponent implements AfterViewInit, OnDestroy {
   private boardCanvas?: ElementRef<HTMLCanvasElement>;
 
   private grid?: GameGrid;
-  private readonly gridConfig = { cols: 70, rows: 50};
+  private readonly gridConfig = { cols: 120, rows: 100};
 
   constructor(private readonly gameService: GameService) {}
 

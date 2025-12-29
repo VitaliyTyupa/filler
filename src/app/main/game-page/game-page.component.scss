@@ -2,10 +2,9 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100vh;
+  height: calc(100vh - 68px);
   align-items: stretch;
   justify-content: stretch;
-  background: radial-gradient(circle at 20% 20%, #1a1f2a, #0f1118);
 }
 
 .board {
