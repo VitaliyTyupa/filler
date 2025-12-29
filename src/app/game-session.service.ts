@@ -16,11 +16,18 @@ export interface GameSettings {
   players: Array<{ id: 1 | 2; name: string; isCpu?: boolean }>;
 }
 
+export interface GameResult {
+  winner: 1 | 2 | 0;
+  score1: number;
+  score2: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class GameSessionService {
   private settings?: GameSettings;
+  private result?: GameResult;
 
   setSettings(settings: GameSettings): void {
     this.settings = settings;
@@ -34,7 +41,20 @@ export class GameSessionService {
     return this.settings !== undefined;
   }
 
+  setResult(result: GameResult): void {
+    this.result = result;
+  }
+
+  getResult(): GameResult | undefined {
+    return this.result;
+  }
+
+  clearResult(): void {
+    this.result = undefined;
+  }
+
   clear(): void {
     this.settings = undefined;
+    this.result = undefined;
   }
 }

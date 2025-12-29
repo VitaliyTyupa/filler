@@ -113,6 +113,11 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.applyMoveAndUpdate(event.userId as PlayerId, event.colorIndex);
 
+    if (this.afterMoveCheck()) {
+      this.isBusy = false;
+      return;
+    }
+
     if (this.isCpuMode && this.state.currentPlayer === this.cpuPlayerId && this.cpuPlayerId) {
       this.isBusy = true;
       setTimeout(() => {
@@ -123,6 +128,12 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
         const cpuColor = this.gameService.pickCpuMove(this.state, this.cpuPlayerId);
         this.applyMoveAndUpdate(this.cpuPlayerId, cpuColor);
+
+        if (this.afterMoveCheck()) {
+          this.isBusy = false;
+          return;
+        }
+
         this.isBusy = false;
       }, 1000);
     }
@@ -167,5 +178,20 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.grid) {
       this.grid.setGridData({ owner: this.state.owner, color: this.state.color });
     }
+  }
+
+  private afterMoveCheck(): boolean {
+    if (!this.state) {
+      return false;
+    }
+
+    if (this.gameService.isGameOver(this.state)) {
+      const result = this.gameService.getWinner(this.state);
+      this.gameSession.setResult(result);
+      this.router.navigateByUrl('/final');
+      return true;
+    }
+
+    return false;
   }
 }
