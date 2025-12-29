@@ -13,7 +13,7 @@
             type="button"
             class="palette-color"
             [style.background-color]="color"
-            [disabled]="isBusy || user.id !== activeUserId || !validMovesByUser[user.id]?.[colorIndex]"
+            [disabled]="isBusy || user.id !== activeUserId || !validMovesByUser[user.id][colorIndex]"
             (click)="handleColorPick(user.id, colorIndex, color)"
           ></button>
         }

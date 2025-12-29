@@ -10,6 +10,12 @@ import {
   Validators
 } from '@angular/forms';
 import { Router } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatSelectModule } from '@angular/material/select';
 import { BOARD_PRESETS } from '../game.constants';
 import { GameMode, GameSessionService, GameSettings } from '../game-session.service';
 
@@ -18,7 +24,16 @@ type BoardPresetOption = (typeof BOARD_PRESETS)[number];
 @Component({
   selector: 'fil-start-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatRadioModule,
+    MatSelectModule
+  ],
   templateUrl: './start-page.component.html',
   styleUrl: './start-page.component.scss'
 })
@@ -26,6 +41,11 @@ export class StartPageComponent {
   readonly boardPresets = BOARD_PRESETS;
   readonly paletteSizes: Array<5 | 7 | 10> = [5, 7, 10];
   readonly modes: GameMode[] = ['cpu', 'local', 'online'];
+  readonly modeLabels: Record<GameMode, string> = {
+    cpu: 'З комп\'ютером',
+    local: 'З іншим гравцем на одному комп\'ютері',
+    online: 'З іншим гравцем онлайн'
+  };
 
   readonly form: FormGroup<{
     mode: FormControl<GameMode>;
@@ -60,6 +80,14 @@ export class StartPageComponent {
 
   get isLocalMode(): boolean {
     return this.form.controls.mode.value === 'local';
+  }
+
+  get player1Control(): FormControl<string> {
+    return this.form.controls.player1Name;
+  }
+
+  get player2Control(): FormControl<string> {
+    return this.form.controls.player2Name;
   }
 
   onSubmit(): void {
