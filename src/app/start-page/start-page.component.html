@@ -1,68 +1,73 @@
 <section class="start-page">
-  <header class="start-page__header">
-    <h1>Start Game</h1>
-    <p>Configure your match settings to begin.</p>
-  </header>
+  <mat-card class="start-card">
+    <header class="start-page__header">
+      <h1>Start Game</h1>
+      <p>Configure your match settings to begin.</p>
+    </header>
 
-  <form class="start-form" [formGroup]="form" (ngSubmit)="onSubmit()">
-    <div class="form-row">
-      <label class="form-label">Mode</label>
-      <div class="mode-options">
-        @for (mode of modes; track mode) {
-          <label class="mode-option">
-            <input type="radio" formControlName="mode" [value]="mode" />
-            <span class="mode-option__label">{{ mode | titlecase }}</span>
-          </label>
-        }
-      </div>
-    </div>
-
-    <div class="form-row">
-      <label class="form-label" for="boardPreset">Board size</label>
-      <select id="boardPreset" class="text-input" formControlName="boardPreset">
-        @for (preset of boardPresets; track preset.label) {
-          <option [ngValue]="preset">{{ preset.label }}</option>
-        }
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label class="form-label" for="paletteSize">Palette size</label>
-      <select id="paletteSize" class="text-input" formControlName="paletteSize">
-        @for (size of paletteSizes; track size) {
-          <option [value]="size">{{ size }} colors</option>
-        }
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label class="form-label" for="player1Name">Player 1 name</label>
-      <input
-        id="player1Name"
-        class="text-input"
-        type="text"
-        formControlName="player1Name"
-        placeholder="Enter your name"
-        required
-      />
-    </div>
-
-    @if (isLocalMode) {
+    <form class="start-form" [formGroup]="form" (ngSubmit)="onSubmit()">
       <div class="form-row">
-        <label class="form-label" for="player2Name">Player 2 name</label>
-        <input
-          id="player2Name"
-          class="text-input"
-          type="text"
-          formControlName="player2Name"
-          placeholder="Enter second player name"
-          required
-        />
+        <p class="form-label">Mode</p>
+        <mat-radio-group class="mode-options" formControlName="mode">
+          @for (mode of modes; track mode) {
+            <mat-radio-button class="mode-option" [value]="mode">{{ modeLabels[mode] }}</mat-radio-button>
+          }
+        </mat-radio-group>
       </div>
-    }
 
-    <div class="actions">
-      <button class="start-button" type="submit" [disabled]="form.invalid">Start game</button>
-    </div>
-  </form>
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Board size</mat-label>
+        <mat-select formControlName="boardPreset">
+          @for (preset of boardPresets; track preset.label) {
+            <mat-option [value]="preset">{{ preset.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Palette size</mat-label>
+        <mat-select formControlName="paletteSize">
+          @for (size of paletteSizes; track size) {
+            <mat-option [value]="size">{{ size }} colors</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Player 1 name</mat-label>
+        <input matInput id="player1Name" type="text" formControlName="player1Name" placeholder="Enter your name" />
+        @if (player1Control.invalid && (player1Control.dirty || player1Control.touched)) {
+          @if (player1Control.hasError('required')) {
+            <mat-error>Обов'язкове поле</mat-error>
+          } @else if (player1Control.hasError('minlength')) {
+            <mat-error>Мінімум 2 символи</mat-error>
+          }
+        }
+      </mat-form-field>
+
+      @if (isLocalMode) {
+        <mat-form-field appearance="outline" class="form-field">
+          <mat-label>Player 2 name</mat-label>
+          <input
+            matInput
+            id="player2Name"
+            type="text"
+            formControlName="player2Name"
+            placeholder="Enter second player name"
+          />
+          @if (player2Control.invalid && (player2Control.dirty || player2Control.touched)) {
+            @if (player2Control.hasError('required')) {
+              <mat-error>Обов'язкове поле</mat-error>
+            } @else if (player2Control.hasError('minlength')) {
+              <mat-error>Мінімум 2 символи</mat-error>
+            }
+          }
+        </mat-form-field>
+      }
+
+      <div class="actions">
+        <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">Почати гру</button>
+      </div>
+    </form>
+  </mat-card>
 </section>
