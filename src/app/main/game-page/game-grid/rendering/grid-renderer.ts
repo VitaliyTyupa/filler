@@ -57,22 +57,21 @@ class ColorFillAppearance implements CellAppearanceStrategy {
 
   applyBaseColors(mesh: InstancedMesh, palette: Color[], colors: Uint8Array | number[]): void {
     this.baseColors = new Array(colors.length);
+    const colorAttr = this.getColorAttribute(mesh);
+    if (!colorAttr) return;
     const color = new Color();
     for (let i = 0; i < colors.length; i++) {
       const baseColor = palette[colors[i]] ?? palette[0];
       this.baseColors[i] = baseColor;
       color.copy(baseColor);
-      mesh.setColorAt(i, color);
+      colorAttr.setXYZ(i, color.r, color.g, color.b);
     }
-    if (mesh.instanceColor) {
-      mesh.instanceColor.needsUpdate = true;
-    }
+    colorAttr.needsUpdate = true;
   }
 
   applyHover(mesh: InstancedMesh, palette: Color[], colors: Uint8Array | number[], hoverId: number): void {
-    if (!mesh.instanceColor) {
-      return;
-    }
+    const colorAttr = this.getColorAttribute(mesh);
+    if (!colorAttr) return;
     const color = new Color();
     for (let i = 0; i < colors.length; i++) {
       const base = this.baseColors[i] ?? palette[colors[i]] ?? palette[0];
@@ -81,11 +80,16 @@ class ColorFillAppearance implements CellAppearanceStrategy {
       } else {
         color.copy(base);
       }
-      mesh.setColorAt(i, color);
+      colorAttr.setXYZ(i, color.r, color.g, color.b);
     }
-    if (mesh.instanceColor) {
-      mesh.instanceColor.needsUpdate = true;
-    }
+    colorAttr.needsUpdate = true;
+  }
+
+  private getColorAttribute(mesh: InstancedMesh): InstancedBufferAttribute | null {
+    const attr = (mesh.geometry as any).getAttribute?.('instanceColor') as
+      | InstancedBufferAttribute
+      | undefined;
+    return attr ?? null;
   }
 }
 
@@ -235,7 +239,10 @@ export class GridRenderer {
     this.appearance.setupMaterial(material);
     const instanceCount = this.data.rows * this.data.cols;
     this.mesh = new InstancedMesh(geometry, material, instanceCount);
-    this.mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(instanceCount * 3), 3);
+    geometry.setAttribute(
+      'instanceColor',
+      new InstancedBufferAttribute(new Float32Array(instanceCount * 3), 3),
+    );
     this.mesh.instanceMatrix.setUsage(35048 /* DynamicDrawUsage */);
     this.scene.add(this.mesh);
     this.layout = this.layoutCalculator.compute(this.width, this.height, this.data.rows, this.data.cols);
