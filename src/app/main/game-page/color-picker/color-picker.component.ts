@@ -16,6 +16,12 @@ export class ColorPickerComponent {
   @Input({ required: true })
   palette: string[] = [];
 
+  @Input({ required: true })
+  activeUserId!: number;
+
+  @Input({ required: true })
+  validMovesByUser!: Record<number, boolean[]>;
+
   @Output()
   readonly colorPick = new EventEmitter<{ userId: number; colorIndex: number; colorHex: string }>();
 
