@@ -11,6 +11,10 @@
   box-sizing: border-box;
 }
 
+.rules-card {
+  margin-top: 1.5rem;
+}
+
 .start-page__header {
   margin-bottom: 1.5rem;
 
@@ -59,4 +63,11 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 0.5rem;
+}
+
+.rules-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.5rem;
 }
