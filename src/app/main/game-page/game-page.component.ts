@@ -1,4 +1,6 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Router } from '@angular/router';
+import { GameSessionService } from '../../game-session.service';
 import { GameGrid } from './game-grid';
 import { ColorPickerComponent } from './color-picker/color-picker.component';
 import { DEFAULT_PALETTE, GameService, GameState, PlayerId } from './game.service';
@@ -28,9 +30,18 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   state?: GameState;
   validMovesByUser: Record<number, boolean[]> = {};
 
-  constructor(private readonly gameService: GameService) {}
+  constructor(
+    private readonly gameService: GameService,
+    private readonly gameSession: GameSessionService,
+    private readonly router: Router
+  ) {}
 
   ngOnInit(): void {
+    if (!this.gameSession.hasSettings()) {
+      this.router.navigateByUrl('/start');
+      return;
+    }
+
     this.baseUsers = this.gameService.getUsers();
     this.palette = this.gameService.getPalette();
 
