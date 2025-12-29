@@ -22,7 +22,8 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   private grid?: GameGrid;
   private readonly gridConfig = { cols: 25, rows: 20 };
 
-  users: Array<{ id: number; name: string }> = [];
+  private baseUsers: Array<{ id: number; name: string }> = [];
+  users: Array<{ id: number; name: string; currentScore: number }> = [];
   palette: string[] = [];
   state?: GameState;
   validMovesByUser: Record<number, boolean[]> = {};
@@ -30,7 +31,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(private readonly gameService: GameService) {}
 
   ngOnInit(): void {
-    this.users = this.gameService.getUsers();
+    this.baseUsers = this.gameService.getUsers();
     this.palette = this.gameService.getPalette();
 
     this.state = this.gameService.generateInitialState({
@@ -39,6 +40,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       paletteSize: this.palette.length || DEFAULT_PALETTE.length
     });
 
+    this.updateUsersWithScore();
     this.updateValidMoves();
   }
 
@@ -83,6 +85,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.state = this.gameService.applyMove(this.state, event.userId as PlayerId, event.colorIndex);
+    this.updateUsersWithScore();
     this.updateValidMoves();
 
     console.log('current player', this.state.currentPlayer, 'score', this.state.score);
@@ -104,5 +107,16 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     });
 
     this.validMovesByUser = mapping;
+  }
+
+  private updateUsersWithScore(): void {
+    if (!this.state) {
+      return;
+    }
+
+    this.users = this.baseUsers.map((user) => ({
+      ...user,
+      currentScore: this.state?.score?.[user.id] ?? 0
+    }));
   }
 }

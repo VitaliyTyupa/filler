@@ -11,7 +11,7 @@ import {MatCard, MatCardContent} from '@angular/material/card';
 })
 export class ColorPickerComponent {
   @Input({ required: true })
-  users: Array<{ id: number; name: string }> = [];
+  users: Array<{ id: number; name: string; currentScore: number }> = [];
 
   @Input({ required: true })
   palette: string[] = [];
