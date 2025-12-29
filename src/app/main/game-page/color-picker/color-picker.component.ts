@@ -1,10 +1,11 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import {MatCard, MatCardContent} from '@angular/material/card';
 
 @Component({
   selector: 'fil-color-picker',
   standalone: true,
-  imports: [MatButtonModule],
+  imports: [MatButtonModule, MatCard, MatCardContent],
   templateUrl: './color-picker.component.html',
   styleUrl: './color-picker.component.scss'
 })
