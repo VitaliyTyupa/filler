@@ -1,0 +1,21 @@
+mat-toolbar {
+  display: flex;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
