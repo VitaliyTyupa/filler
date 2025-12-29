@@ -103,6 +103,49 @@ export class GameService {
     return moves;
   }
 
+  pickCpuMove(state: GameState, cpuPlayerId: PlayerId): number {
+    const validMoves = this.getValidMoves(state, cpuPlayerId);
+    const adjacentColors = new Set<number>();
+
+    for (let index = 0; index < state.owner.length; index += 1) {
+      if (state.owner[index] !== cpuPlayerId) {
+        continue;
+      }
+
+      const neighbors = this.getNeighbors(index, state.cols, state.rows);
+
+      neighbors.forEach((neighbor) => {
+        if (state.owner[neighbor] !== cpuPlayerId) {
+          adjacentColors.add(state.color[neighbor]);
+        }
+      });
+    }
+
+    const candidateColors: number[] = [];
+    adjacentColors.forEach((colorIndex) => {
+      if (validMoves[colorIndex]) {
+        candidateColors.push(colorIndex);
+      }
+    });
+
+    const availableMoves: number[] = candidateColors.length ? candidateColors : [];
+
+    if (!availableMoves.length) {
+      for (let colorIndex = 0; colorIndex < validMoves.length; colorIndex += 1) {
+        if (validMoves[colorIndex]) {
+          availableMoves.push(colorIndex);
+        }
+      }
+    }
+
+    if (!availableMoves.length) {
+      return state.playerColor[cpuPlayerId];
+    }
+
+    const randomIndex = Math.floor(Math.random() * availableMoves.length);
+    return availableMoves[randomIndex];
+  }
+
   hasContact(state: GameState): boolean {
     const { cols, rows, owner } = state;
     const totalCells = cols * rows;

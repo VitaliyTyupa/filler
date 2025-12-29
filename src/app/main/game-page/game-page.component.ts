@@ -32,6 +32,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   validMovesByUser: Record<number, boolean[]> = {};
   isCpuMode = false;
   cpuPlayerId?: PlayerId;
+  isBusy = false;
 
   constructor(
     private readonly gameService: GameService,
@@ -106,18 +107,24 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
   onColorPick(event: { userId: number; colorIndex: number; colorHex: string }): void {
-    if (!this.state) {
+    if (!this.state || this.isBusy) {
       return;
     }
 
-    this.state = this.gameService.applyMove(this.state, event.userId as PlayerId, event.colorIndex);
-    this.updateUsersWithScore();
-    this.updateValidMoves();
+    this.applyMoveAndUpdate(event.userId as PlayerId, event.colorIndex);
 
-    console.log('scores', this.state.score[1], this.state.score[2]);
+    if (this.isCpuMode && this.state.currentPlayer === this.cpuPlayerId && this.cpuPlayerId) {
+      this.isBusy = true;
+      setTimeout(() => {
+        if (!this.state || !this.cpuPlayerId) {
+          this.isBusy = false;
+          return;
+        }
 
-    if (this.grid) {
-      this.grid.setGridData({ owner: this.state.owner, color: this.state.color });
+        const cpuColor = this.gameService.pickCpuMove(this.state, this.cpuPlayerId);
+        this.applyMoveAndUpdate(this.cpuPlayerId, cpuColor);
+        this.isBusy = false;
+      }, 1000);
     }
   }
 
@@ -144,5 +151,21 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       ...user,
       currentScore: this.state?.score?.[user.id] ?? 0
     }));
+  }
+
+  private applyMoveAndUpdate(playerId: PlayerId, colorIndex: number): void {
+    if (!this.state) {
+      return;
+    }
+
+    this.state = this.gameService.applyMove(this.state, playerId, colorIndex);
+    this.updateUsersWithScore();
+    this.updateValidMoves();
+
+    console.log('scores', this.state.score[1], this.state.score[2]);
+
+    if (this.grid) {
+      this.grid.setGridData({ owner: this.state.owner, color: this.state.color });
+    }
   }
 }
