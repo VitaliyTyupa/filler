@@ -6,7 +6,8 @@ import {
   Object3D,
   OrthographicCamera,
   Scene,
-  WebGLRenderer
+  WebGLRenderer,
+  BufferAttribute
 } from 'three';
 
 export type GameGridData = {
@@ -207,46 +208,55 @@ export class GameGrid {
   }
 
   private createBoard(): void {
-    if (!this.scene) {
-      return;
-    }
+    if (!this.scene) return;
 
-    const cellGeometry = new BoxGeometry(
-      this.gridConfig.cellSize * 0.92,
-      this.gridConfig.cellSize * 0.92,
-      0.1
-    );
-    const cellMaterial = new MeshBasicMaterial({ color: 0xffffff, vertexColors: true });
-    const totalCells = this.gridConfig.cols * this.gridConfig.rows;
+    const { cols, rows, cellSize } = this.gridConfig;
+
+    const cellGeometry = new BoxGeometry(cellSize * 0.92, cellSize * 0.92, 0.1);
+
+// add WHITE vertex colors so instanceColor can tint it
+    const vCount = cellGeometry.getAttribute('position').count;
+    const vColors = new Float32Array(vCount * 3);
+    vColors.fill(1); // white
+    cellGeometry.setAttribute('color', new BufferAttribute(vColors, 3));
+
+    const cellMaterial = new MeshBasicMaterial({
+      color: 0xffffff,
+      vertexColors: true,
+    });
+    cellMaterial.vertexColors = true;
+    cellMaterial.needsUpdate = true;
+    const totalCells = cols * rows;
     const instancedMesh = new InstancedMesh(cellGeometry, cellMaterial, totalCells);
 
+    // IMPORTANT: assign BEFORE setting colors via helper
+    this.boardMesh = instancedMesh;
+
     const tempObject = new Object3D();
-    const xOffset = ((this.gridConfig.cols - 1) * this.gridConfig.cellSize) / 2;
-    const yOffset = ((this.gridConfig.rows - 1) * this.gridConfig.cellSize) / 2;
+    const xOffset = ((cols - 1) * cellSize) / 2;
+    const yOffset = ((rows - 1) * cellSize) / 2;
 
     let index = 0;
-    for (let row = 0; row < this.gridConfig.rows; row += 1) {
-      for (let col = 0; col < this.gridConfig.cols; col += 1) {
-        tempObject.position.set(
-          col * this.gridConfig.cellSize - xOffset,
-          yOffset - row * this.gridConfig.cellSize,
-          0
-        );
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        tempObject.position.set(col * cellSize - xOffset, yOffset - row * cellSize, 0);
         tempObject.updateMatrix();
         instancedMesh.setMatrixAt(index, tempObject.matrix);
-        this.applyColorToInstance(index);
-        index += 1;
+
+        // set color DIRECTLY (don’t rely on boardMesh being set later)
+        const c = this.paletteColors[0] ?? this.defaultColor;
+        instancedMesh.setColorAt(index, c);
+
+        index++;
       }
     }
 
     instancedMesh.instanceMatrix.needsUpdate = true;
-    this.boardMesh = instancedMesh;
-    this.scene.add(instancedMesh);
+    if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
 
-    if (instancedMesh.instanceColor) {
-      instancedMesh.instanceColor.needsUpdate = true;
-    }
+    this.scene.add(instancedMesh);
   }
+
 
   private refreshAllColors(): void {
     if (!this.boardMesh) {
