@@ -1,5 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Router } from '@angular/router';
@@ -8,7 +10,13 @@ import { GameSessionService, GameSettings } from '../game-session.service';
 @Component({
   selector: 'fil-waiting-page',
   standalone: true,
-  imports: [CommonModule, MatTabsModule, MatProgressSpinnerModule],
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatCardModule,
+    MatTabsModule,
+    MatProgressSpinnerModule
+  ],
   templateUrl: './waiting-page.component.html',
   styleUrl: './waiting-page.component.scss'
 })

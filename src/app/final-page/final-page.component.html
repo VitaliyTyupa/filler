@@ -1,32 +1,45 @@
-<section class="final-page" *ngIf="result && settings; else redirecting">
-  <header>
-    <h1>Фінальний результат</h1>
-    <p class="subtitle">Режим: {{ settings.mode | titlecase }} • Поле: {{ settings.board.cols }}×{{ settings.board.rows }}</p>
-  </header>
+@if (result && settings) {
+  <section class="final-page">
+    <mat-card appearance="outlined">
+      <mat-card-header>
+        <mat-card-title>
+          @if (result.winner === 1) {
+            🎉 Переміг Player 1
+          } @else if (result.winner === 2) {
+            🎉 Переміг Player 2
+          } @else {
+            🤝 Нічия
+          }
+        </mat-card-title>
+        <mat-card-subtitle>Рахунок: {{ result.score1 }} : {{ result.score2 }}</mat-card-subtitle>
+      </mat-card-header>
 
-  <div class="summary">
-    <div class="score-card" [class.winner]="result.winner === 1">
-      <p class="label">Player 1</p>
-      <h2>{{ settings.players[0].name }}</h2>
-      <p class="score">{{ result.score1 }}</p>
-    </div>
-    <div class="score-card" [class.winner]="result.winner === 2">
-      <p class="label">Player 2</p>
-      <h2>{{ settings.players[1].name }}</h2>
-      <p class="score">{{ result.score2 }}</p>
-    </div>
-  </div>
+      <mat-card-content>
+        <p class="subtitle">Поле: {{ settings.board.cols }}×{{ settings.board.rows }} • Режим: {{ settings.mode | titlecase }}</p>
+        <div class="summary">
+          <div class="score-card" [class.winner]="result.winner === 1">
+            <p class="label">Player 1</p>
+            <h2>{{ settings.players[0].name }}</h2>
+            <p class="score">{{ result.score1 }}</p>
+          </div>
+          <div class="score-card" [class.winner]="result.winner === 2">
+            <p class="label">Player 2</p>
+            <h2>{{ settings.players[1].name }}</h2>
+            <p class="score">{{ result.score2 }}</p>
+          </div>
+        </div>
+      </mat-card-content>
 
-  <p class="winner" *ngIf="result.winner === 0">Нічия</p>
-  <p class="winner" *ngIf="result.winner === 1">Переміг Player 1: {{ settings.players[0].name }}</p>
-  <p class="winner" *ngIf="result.winner === 2">Переміг Player 2: {{ settings.players[1].name }}</p>
-
-  <div class="actions">
-    <button type="button" (click)="restart()">Почати гру з початку</button>
-    <button type="button" class="secondary" (click)="newGame()">Налаштувати нову гру</button>
-  </div>
-</section>
-
-<ng-template #redirecting>
-  <p>Переадресація...</p>
-</ng-template>
+      <mat-card-actions align="end">
+        <div class="actions">
+          <button mat-raised-button color="primary" type="button" (click)="restart()">
+            Почати гру з початку
+          </button>
+          <button mat-stroked-button type="button" (click)="newGame()">Налаштувати нову гру</button>
+        </div>
+      </mat-card-actions>
+    </mat-card>
+  </section>
+} @else {
+  <p class="redirecting">Переадресація...</p>
+}

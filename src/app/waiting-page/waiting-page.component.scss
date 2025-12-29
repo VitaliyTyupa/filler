@@ -1,98 +1,74 @@
 .waiting-page {
-  padding: 2rem;
-
-  h1 {
-    margin-bottom: 1rem;
-  }
+  max-width: 720px;
+  margin: 32px auto;
+  padding: 0 16px;
 }
 
 .lobby {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 16px;
+  padding: 8px 0 4px;
 }
 
 .summary {
   display: grid;
-  gap: 0.75rem;
+  gap: 8px;
 }
 
 .summary-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0.75rem;
-  border-radius: 8px;
-  background: #f5f5f5;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.03);
+}
 
-  .label {
-    font-weight: 600;
-  }
+.label {
+  font-weight: 600;
+}
 
-  .value {
-    color: #333;
-  }
+.value {
+  color: rgba(0, 0, 0, 0.82);
 }
 
 .status {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px dashed #d0d0d0;
-  border-radius: 8px;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(25, 118, 210, 0.04);
 }
 
 .spinner {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
 .connected {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 12px;
   align-items: center;
+}
 
-  .status-text {
-    margin: 0;
-  }
+.status-text {
+  margin: 0;
 }
 
 .actions {
   display: flex;
-  gap: 0.75rem;
-
-  button {
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    background: #fff;
-    cursor: pointer;
-    transition: background 0.2s ease;
-
-    &:hover {
-      background: #f2f2f2;
-    }
-
-    &.primary {
-      background: #1976d2;
-      color: #fff;
-      border-color: #1976d2;
-
-      &:hover {
-        background: #115293;
-      }
-    }
-  }
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .info {
-  padding: 1rem 0;
-
-  p {
-    margin-bottom: 0.5rem;
-  }
+  padding: 12px 4px;
+  color: rgba(0, 0, 0, 0.72);
+  line-height: 1.5;
 }
