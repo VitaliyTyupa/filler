@@ -144,6 +144,15 @@ export class GameGrid {
     this.refreshAllColors();
   }
 
+  updateColors(colors: Uint8Array): void {
+    if (colors.length !== this.gridConfig.cols * this.gridConfig.rows) {
+      return;
+    }
+
+    this.colorData = colors;
+    this.refreshAllColors();
+  }
+
   applyDiff(diff: GameGridDiff): void {
     if (!this.boardMesh) {
       return;

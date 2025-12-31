@@ -36,6 +36,8 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   private boardCanvas?: ElementRef<HTMLCanvasElement>;
 
   private grid?: GameGrid;
+  private gridInitialized = false;
+  private lastGridKey?: string;
   private settings?: GameSettings;
   private baseUsers: Array<{ id: number; name: string; isCpu: boolean }> = [];
   private onlineSubscriptions: Subscription[] = [];
@@ -253,14 +255,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       this.state = payload.state as SerializedGameState;
       this.updateUsersWithScore();
       this.updateValidMoves();
-      this.tryInitializeGrid();
-
-      if (this.grid && this.state) {
-        const owner = Uint8Array.from(this.state.owner);
-        const color = Uint8Array.from(this.state.color);
-
-        this.grid.setGridData({ owner, color });
-      }
+      this.applyStateToGrid(this.state.cols, this.state.rows, this.state.color);
     });
 
     const overSub = this.onlineGame.gameOver$.subscribe((result) => {
@@ -276,33 +271,16 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private tryInitializeGrid(): void {
-    if (!this.boardContainer || !this.boardCanvas || !this.state) {
+    if (!this.state) {
       return;
     }
 
-    if (this.grid) {
+    if (this.gridInitialized) {
       return;
     }
 
-    const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
-
-    const gridColors = this.state.color instanceof Uint8Array ? this.state.color : Uint8Array.from(this.state.color);
-
-    this.grid = new GameGrid({
-      canvas: this.boardCanvas.nativeElement,
-      width: clientWidth,
-      height: clientHeight,
-      grid: { cols: this.state.cols, rows: this.state.rows, colors: gridColors },
-      palette: this.palette.length ? this.palette : DEFAULT_PALETTE_10
-    });
-
-    this.grid.init();
-
-    const owner = this.state.owner instanceof Uint8Array ? this.state.owner : Uint8Array.from(this.state.owner);
-    const color = this.state.color instanceof Uint8Array ? this.state.color : Uint8Array.from(this.state.color);
-
-    this.grid.setGridData({ owner, color });
-    this.grid.start();
+    const colorData = this.state.color instanceof Uint8Array ? this.state.color : Uint8Array.from(this.state.color);
+    this.applyStateToGrid(this.state.cols, this.state.rows, colorData);
   }
 
   private getLocalState(): GameState | null {
@@ -319,5 +297,61 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private isGameState(state: GameState | SerializedGameState | undefined): state is GameState {
     return !!state && state.owner instanceof Uint8Array && state.color instanceof Uint8Array;
+  }
+
+  private applyStateToGrid(cols: number, rows: number, color: ArrayLike<number>): void {
+    if (!this.boardContainer || !this.boardCanvas) {
+      return;
+    }
+
+    if (cols <= 0 || rows <= 0 || color.length !== cols * rows) {
+      return;
+    }
+
+    const colorsU8 = Uint8Array.from(color);
+    const gridKey = `${cols}x${rows}`;
+
+    if (!this.gridInitialized || !this.grid || this.lastGridKey !== gridKey) {
+      const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
+      const width = clientWidth || 1;
+      const height = clientHeight || 1;
+      const paletteToUse = this.palette.length ? this.palette : DEFAULT_PALETTE_10;
+      const ownerArray = this.state?.owner
+        ? Uint8Array.from(this.state.owner as ArrayLike<number>)
+        : new Uint8Array(colorsU8.length);
+
+      this.grid = new GameGrid({
+        canvas: this.boardCanvas.nativeElement,
+        width,
+        height,
+        grid: { cols, rows, colors: colorsU8 },
+        palette: paletteToUse
+      });
+
+      this.grid.init();
+      this.grid.setGridData({ owner: ownerArray, color: colorsU8 });
+      this.grid.start();
+
+      this.gridInitialized = true;
+      this.lastGridKey = gridKey;
+
+      requestAnimationFrame(() => {
+        if (!this.boardContainer || !this.grid) {
+          return;
+        }
+
+        const { clientWidth: deferredWidth, clientHeight: deferredHeight } = this.boardContainer.nativeElement;
+
+        if (deferredWidth && deferredHeight) {
+          this.grid.updateLayout(deferredWidth, deferredHeight);
+        } else {
+          this.grid.updateLayout(width, height);
+        }
+      });
+
+      return;
+    }
+
+    this.grid.updateColors(colorsU8);
   }
 }
