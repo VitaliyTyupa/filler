@@ -5,9 +5,16 @@
 /tmp
 /out-tsc
 /bazel-out
+/client/dist
+/client/out-tsc
+/server/dist
+/shared/dist
 
 # Node
 /node_modules
+/client/node_modules
+/server/node_modules
+/shared/node_modules
 npm-debug.log
 yarn-error.log
 

@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { type GameResult as SharedGameResult, type PlayerId } from '@filler/shared/engine';
 
 export type GameMode = 'cpu' | 'local' | 'online';
 
@@ -13,14 +14,10 @@ export interface GameSettings {
   mode: GameMode;
   board: { cols: number; rows: number };
   paletteSize: 5 | 7 | 10;
-  players: Array<{ id: 1 | 2; name: string; isCpu?: boolean }>;
+  players: Array<{ id: PlayerId; name: string; isCpu?: boolean }>;
 }
 
-export interface GameResult {
-  winner: 1 | 2 | 0;
-  score1: number;
-  score2: number;
-}
+export type GameResult = SharedGameResult;
 
 @Injectable({
   providedIn: 'root'
