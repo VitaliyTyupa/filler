@@ -41,7 +41,7 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
     private readonly onlineGame: OnlineGameService
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     const currentSettings = this.gameSession.getSettings();
 
     if (!currentSettings || currentSettings.mode !== 'online') {
@@ -52,14 +52,19 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
     this.settings = currentSettings;
     this.players = { 1: { name: this.settings.players[0]?.name ?? 'Player 1' } };
 
-    this.onlineGame.connect();
+    try {
+      await this.onlineGame.connect();
+    } catch (error) {
+      console.error('[online] failed to connect', error);
+      return;
+    }
+
     this.restoreExistingSession();
     this.registerSubscriptions();
   }
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((sub) => sub.unsubscribe());
-    this.onlineGame.disconnect();
   }
 
   get hasSecondPlayer(): boolean {
@@ -71,14 +76,16 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.onlineGame.createRoom({
-      name: this.settings.players[0]?.name ?? 'Player 1',
-      settings: {
-        cols: this.settings.board.cols,
-        rows: this.settings.board.rows,
-        paletteSize: this.settings.paletteSize
-      }
-    });
+    this.ensureConnectedAnd(() =>
+      this.onlineGame.createRoom({
+        name: this.settings!.players[0]?.name ?? 'Player 1',
+        settings: {
+          cols: this.settings!.board.cols,
+          rows: this.settings!.board.rows,
+          paletteSize: this.settings!.paletteSize
+        }
+      })
+    );
   }
 
   onJoinRoom(): void {
@@ -92,10 +99,12 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.onlineGame.joinRoom({
-      roomId: code,
-      name: this.settings.players[0]?.name ?? 'Player'
-    });
+    this.ensureConnectedAnd(() =>
+      this.onlineGame.joinRoom({
+        roomId: code,
+        name: this.settings!.players[0]?.name ?? 'Player'
+      })
+    );
   }
 
   onStartGame(): void {
@@ -103,7 +112,7 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.onlineGame.startRoom({ roomId: this.roomId });
+    this.ensureConnectedAnd(() => this.onlineGame.startRoom({ roomId: this.roomId! }));
   }
 
   private restoreExistingSession(): void {
@@ -191,5 +200,18 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
     }
 
     this.router.navigateByUrl('/game');
+  }
+
+  private async ensureConnectedAnd(action: () => void): Promise<void> {
+    if (!this.onlineGame.isConnected()) {
+      try {
+        await this.onlineGame.connect();
+      } catch (error) {
+        console.error('[online] failed to connect', error);
+        return;
+      }
+    }
+
+    action();
   }
 }

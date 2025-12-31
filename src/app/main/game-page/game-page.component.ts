@@ -57,7 +57,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     private readonly router: Router
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     if (!this.gameSession.hasSettings()) {
       this.router.navigateByUrl('/start');
       return;
@@ -91,7 +91,13 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      this.onlineGame.connect();
+      try {
+        await this.onlineGame.connect();
+      } catch (error) {
+        console.error('[online] failed to connect', error);
+        return;
+      }
+
       this.setupOnlineSubscriptions();
       this.updateUsersWithScore();
       return;
@@ -138,6 +144,10 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       }
 
       if (event.userId !== this.state.currentPlayer) {
+        return;
+      }
+
+      if (!this.onlineGame.isConnected()) {
         return;
       }
 
