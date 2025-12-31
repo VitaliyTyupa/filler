@@ -224,8 +224,10 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       return false;
     }
 
-    if (this.gameService.isGameOver(this.state as GameState)) {
-      const result = this.gameService.getWinner(this.state);
+    const localState = this.state as GameState;
+
+    if (this.gameService.isGameOver(localState)) {
+      const result = this.gameService.getWinner(localState);
       this.gameSession.setResult(result);
       this.router.navigateByUrl('/final');
       return true;
