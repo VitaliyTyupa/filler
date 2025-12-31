@@ -1,10 +1,23 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { DEFAULT_PALETTE_10, getPalette } from '../../game.constants';
 import { GameSessionService, GameSettings } from '../../game-session.service';
 import { ColorPickerComponent } from './color-picker/color-picker.component';
 import { GameGrid } from './game-grid';
 import { GameService, GameState, PlayerId } from './game.service';
+import { OnlineGameService } from '../../online-game.service';
+
+interface SerializedGameState {
+  cols: number;
+  rows: number;
+  paletteSize: number;
+  owner: number[];
+  color: number[];
+  playerColor: number[];
+  currentPlayer: 1 | 2;
+  score: number[];
+}
 
 @Component({
   selector: 'fil-game-page',
@@ -25,10 +38,11 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   private grid?: GameGrid;
   private settings?: GameSettings;
   private baseUsers: Array<{ id: number; name: string; isCpu: boolean }> = [];
+  private onlineSubscriptions: Subscription[] = [];
 
   users: Array<{ id: number; name: string; currentScore: number; isCpu: boolean }> = [];
   palette: string[] = [];
-  state?: GameState;
+  state?: GameState | SerializedGameState;
   validMovesByUser: Record<number, boolean[]> = {};
   isCpuMode = false;
   cpuPlayerId?: PlayerId;
@@ -37,6 +51,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private readonly gameService: GameService,
     private readonly gameSession: GameSessionService,
+    private readonly onlineGame: OnlineGameService,
     private readonly router: Router
   ) {}
 
@@ -61,6 +76,25 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       isCpu: player.isCpu ?? false
     }));
 
+    this.validMovesByUser = this.baseUsers.reduce((mapping, user) => {
+      return { ...mapping, [user.id]: new Array(this.palette.length).fill(false) };
+    }, {} as Record<number, boolean[]>);
+
+    if (mode === 'online') {
+      const roomId = this.gameSession.getRoomId();
+      const assignedPlayerId = this.gameSession.getAssignedPlayerId();
+
+      if (!roomId || !assignedPlayerId) {
+        this.router.navigateByUrl('/waiting');
+        return;
+      }
+
+      this.onlineGame.connect();
+      this.setupOnlineSubscriptions();
+      this.updateUsersWithScore();
+      return;
+    }
+
     this.state = this.gameService.generateInitialState({
       cols: board.cols,
       rows: board.rows,
@@ -72,29 +106,14 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    if (!this.boardContainer || !this.boardCanvas || !this.state) {
-      return;
-    }
-
-    const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
-
-    this.grid = new GameGrid({
-      canvas: this.boardCanvas.nativeElement,
-      width: clientWidth,
-      height: clientHeight,
-      grid: { cols: this.state.cols, rows: this.state.rows, colors: this.state.color },
-      palette: this.palette.length ? this.palette : DEFAULT_PALETTE_10
-    });
-
-    this.grid.init();
-    this.grid.setGridData({ owner: this.state.owner, color: this.state.color });
-    this.grid.start();
+    this.tryInitializeGrid();
     window.addEventListener('resize', this.handleResize);
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('resize', this.handleResize);
     this.grid?.dispose();
+    this.onlineSubscriptions.forEach((subscription) => subscription.unsubscribe());
   }
 
   private handleResize = (): void => {
@@ -108,6 +127,19 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onColorPick(event: { userId: number; colorIndex: number; colorHex: string }): void {
     if (!this.state || this.isBusy) {
+      return;
+    }
+
+    if (this.settings?.mode === 'online') {
+      if (event.userId !== this.gameSession.getAssignedPlayerId()) {
+        return;
+      }
+
+      if (event.userId !== this.state.currentPlayer) {
+        return;
+      }
+
+      this.onlineGame.pickColor({ roomId: this.gameSession.getRoomId()!, colorIndex: event.colorIndex });
       return;
     }
 
@@ -146,18 +178,21 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const mapping: Record<number, boolean[]> = {};
 
-    this.users.forEach((user) => {
-      mapping[user.id] = this.gameService.getValidMoves(this.state as GameState, user.id as PlayerId);
-    });
+    if (this.settings?.mode === 'online') {
+      this.users.forEach((user) => {
+        const isActive = user.id === this.state?.currentPlayer;
+        mapping[user.id] = new Array(this.palette.length).fill(isActive);
+      });
+    } else {
+      this.users.forEach((user) => {
+        mapping[user.id] = this.gameService.getValidMoves(this.state as GameState, user.id as PlayerId);
+      });
+    }
 
     this.validMovesByUser = mapping;
   }
 
   private updateUsersWithScore(): void {
-    if (!this.state) {
-      return;
-    }
-
     this.users = this.baseUsers.map((user) => ({
       ...user,
       currentScore: this.state?.score?.[user.id] ?? 0
@@ -165,7 +200,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private applyMoveAndUpdate(playerId: PlayerId, colorIndex: number): void {
-    if (!this.state) {
+    if (!this.state || this.settings?.mode === 'online') {
       return;
     }
 
@@ -185,7 +220,11 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       return false;
     }
 
-    if (this.gameService.isGameOver(this.state)) {
+    if (this.settings?.mode === 'online') {
+      return false;
+    }
+
+    if (this.gameService.isGameOver(this.state as GameState)) {
       const result = this.gameService.getWinner(this.state);
       this.gameSession.setResult(result);
       this.router.navigateByUrl('/final');
@@ -193,5 +232,66 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return false;
+  }
+
+  private setupOnlineSubscriptions(): void {
+    const stateSub = this.onlineGame.gameState$.subscribe((payload) => {
+      if (!payload?.state) {
+        return;
+      }
+
+      this.state = payload.state as SerializedGameState;
+      this.updateUsersWithScore();
+      this.updateValidMoves();
+      this.tryInitializeGrid();
+
+      if (this.grid && this.state) {
+        const owner = Uint8Array.from(this.state.owner);
+        const color = Uint8Array.from(this.state.color);
+
+        this.grid.setGridData({ owner, color });
+      }
+    });
+
+    const overSub = this.onlineGame.gameOver$.subscribe((result) => {
+      this.gameSession.setResult(result);
+      this.router.navigateByUrl('/final');
+    });
+
+    const errorSub = this.onlineGame.error$.subscribe((error) => {
+      console.error('[online] error', error);
+    });
+
+    this.onlineSubscriptions.push(stateSub, overSub, errorSub);
+  }
+
+  private tryInitializeGrid(): void {
+    if (!this.boardContainer || !this.boardCanvas || !this.state) {
+      return;
+    }
+
+    if (this.grid) {
+      return;
+    }
+
+    const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
+
+    const gridColors = this.state.color instanceof Uint8Array ? this.state.color : Uint8Array.from(this.state.color);
+
+    this.grid = new GameGrid({
+      canvas: this.boardCanvas.nativeElement,
+      width: clientWidth,
+      height: clientHeight,
+      grid: { cols: this.state.cols, rows: this.state.rows, colors: gridColors },
+      palette: this.palette.length ? this.palette : DEFAULT_PALETTE_10
+    });
+
+    this.grid.init();
+
+    const owner = this.state.owner instanceof Uint8Array ? this.state.owner : Uint8Array.from(this.state.owner);
+    const color = this.state.color instanceof Uint8Array ? this.state.color : Uint8Array.from(this.state.color);
+
+    this.grid.setGridData({ owner, color });
+    this.grid.start();
   }
 }
