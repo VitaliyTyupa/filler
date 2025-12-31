@@ -153,12 +153,14 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.isCpuMode && this.state.currentPlayer === this.cpuPlayerId && this.cpuPlayerId) {
       this.isBusy = true;
       setTimeout(() => {
-        if (!this.state || !this.cpuPlayerId) {
+        const localState = this.getLocalState();
+
+        if (!localState || !this.cpuPlayerId) {
           this.isBusy = false;
           return;
         }
 
-        const cpuColor = this.gameService.pickCpuMove(this.state, this.cpuPlayerId);
+        const cpuColor = this.gameService.pickCpuMove(localState, this.cpuPlayerId);
         this.applyMoveAndUpdate(this.cpuPlayerId, cpuColor);
 
         if (this.afterMoveCheck()) {
@@ -185,7 +187,11 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     } else {
       this.users.forEach((user) => {
-        mapping[user.id] = this.gameService.getValidMoves(this.state as GameState, user.id as PlayerId);
+        const localState = this.getLocalState();
+
+        mapping[user.id] = localState
+          ? this.gameService.getValidMoves(localState, user.id as PlayerId)
+          : new Array(this.palette.length).fill(false);
       });
     }
 
@@ -200,11 +206,13 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private applyMoveAndUpdate(playerId: PlayerId, colorIndex: number): void {
-    if (!this.state || this.settings?.mode === 'online') {
+    const localState = this.getLocalState();
+
+    if (!localState || this.settings?.mode === 'online') {
       return;
     }
 
-    this.state = this.gameService.applyMove(this.state, playerId, colorIndex);
+    this.state = this.gameService.applyMove(localState, playerId, colorIndex);
     this.updateUsersWithScore();
     this.updateValidMoves();
 
@@ -216,15 +224,15 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private afterMoveCheck(): boolean {
-    if (!this.state) {
+    const localState = this.getLocalState();
+
+    if (!localState) {
       return false;
     }
 
     if (this.settings?.mode === 'online') {
       return false;
     }
-
-    const localState = this.state as GameState;
 
     if (this.gameService.isGameOver(localState)) {
       const result = this.gameService.getWinner(localState);
@@ -295,5 +303,21 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.grid.setGridData({ owner, color });
     this.grid.start();
+  }
+
+  private getLocalState(): GameState | null {
+    if (this.settings?.mode === 'online') {
+      return null;
+    }
+
+    if (this.isGameState(this.state)) {
+      return this.state;
+    }
+
+    return null;
+  }
+
+  private isGameState(state: GameState | SerializedGameState | undefined): state is GameState {
+    return !!state && state.owner instanceof Uint8Array && state.color instanceof Uint8Array;
   }
 }
