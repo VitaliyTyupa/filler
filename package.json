@@ -1,13 +1,11 @@
 {
   "name": "filler-monorepo",
   "private": true,
-  "workspaces": {
-    "packages": [
-      "client",
-      "server",
-      "shared"
-    ]
-  },
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
   "scripts": {
     "client:dev": "npm --workspace client start",
     "client:build": "npm --workspace client run build",
