@@ -1,13 +1,41 @@
 <section class="waiting-page" *ngIf="settings as config">
   <mat-card appearance="outlined">
     <mat-card-header>
-      <mat-card-title>Очікування гравця</mat-card-title>
+      <mat-card-title>Онлайн лобі</mat-card-title>
     </mat-card-header>
 
     <mat-card-content>
-      <mat-tab-group>
-        <mat-tab label="Lobby">
-          <div class="lobby">
+      <div class="setup" *ngIf="!roomId; else lobbyView">
+        <div class="panel">
+          <h3>Створити кімнату</h3>
+          <p>Використовуйте налаштування зі стартової сторінки та поділіться кодом.</p>
+          <button mat-raised-button color="primary" type="button" (click)="onCreateRoom()">
+            Створити кімнату
+          </button>
+        </div>
+
+        <div class="panel">
+          <h3>Приєднатися</h3>
+          <p>Введіть код кімнати від свого друга, щоб продовжити.</p>
+          <mat-form-field appearance="outline" floatLabel="always">
+            <mat-label>Код кімнати</mat-label>
+            <input
+              matInput
+              name="room-code"
+              [(ngModel)]="joinCode"
+              placeholder="Наприклад, ABC123"
+              autocomplete="off"
+            />
+          </mat-form-field>
+          <button mat-stroked-button color="primary" type="button" (click)="onJoinRoom()">
+            Приєднатися
+          </button>
+        </div>
+      </div>
+
+      <ng-template #lobbyView>
+        <div class="lobby">
+          <div class="room-meta">
             <div class="summary">
               <div class="summary-row">
                 <span class="label">Board</span>
@@ -18,38 +46,44 @@
                 <span class="value">{{ config.paletteSize }}</span>
               </div>
               <div class="summary-row">
-                <span class="label">Player 1</span>
-                <span class="value">{{ config.players[0].name }}</span>
+                <span class="label">Статус</span>
+                <span class="value">{{ status }}</span>
               </div>
             </div>
 
-            <div class="status">
-              @if (isWaiting) {
-                <div class="spinner">
-                  <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
-                  <p>Очікування другого гравця…</p>
-                </div>
-              } @else {
-                <div class="connected">
-                  <p class="status-text">Player 2: <strong>{{ player2Name }}</strong></p>
-                  <div class="actions">
-                    <button mat-stroked-button type="button" (click)="onReject()">Відхилити</button>
-                    <button mat-raised-button color="primary" type="button" (click)="onStartGame()">
-                      Почати гру
-                    </button>
-                  </div>
-                </div>
-              }
+            <div class="room-code">
+              <span class="label">Код кімнати</span>
+              <div class="code">{{ roomId }}</div>
             </div>
           </div>
-        </mat-tab>
-        <mat-tab label="Info">
-          <div class="info">
-            <p>Online режим знаходиться в розробці.</p>
-            <p>Поточна реалізація — mock для UI.</p>
+
+          <div class="players">
+            <div class="player-card" [class.connected]="players[1]">
+              <div class="label">Гравець 1</div>
+              <div class="name">{{ players[1]?.name || 'Очікуємо…' }}</div>
+              <span class="role" *ngIf="players[1]">Host</span>
+            </div>
+            <div class="player-card" [class.connected]="players[2]">
+              <div class="label">Гравець 2</div>
+              <div class="name">{{ players[2]?.name || 'Очікуємо…' }}</div>
+              <span class="role" *ngIf="players[2]">Guest</span>
+            </div>
           </div>
-        </mat-tab>
-      </mat-tab-group>
+
+          <div class="status">
+            <div class="spinner" *ngIf="!hasSecondPlayer">
+              <mat-progress-spinner mode="indeterminate" diameter="36"></mat-progress-spinner>
+              <p>Очікуємо другого гравця…</p>
+            </div>
+
+            <div class="actions" *ngIf="isHost">
+              <button mat-raised-button color="primary" type="button" [disabled]="!hasSecondPlayer" (click)="onStartGame()">
+                Start game
+              </button>
+            </div>
+          </div>
+        </div>
+      </ng-template>
     </mat-card-content>
   </mat-card>
 </section>
