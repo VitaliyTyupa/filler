@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 
 export type GameMode = 'cpu' | 'local' | 'online';
+export type PlayerId = 1 | 2;
 
 export type BoardPreset =
   | { cols: 25; rows: 20 }
@@ -13,7 +14,7 @@ export interface GameSettings {
   mode: GameMode;
   board: { cols: number; rows: number };
   paletteSize: 5 | 7 | 10;
-  players: Array<{ id: 1 | 2; name: string; isCpu?: boolean }>;
+  players: Array<{ id: PlayerId; name: string; isCpu?: boolean }>;
 }
 
 export interface GameResult {
@@ -28,6 +29,8 @@ export interface GameResult {
 export class GameSessionService {
   private settings?: GameSettings;
   private result?: GameResult;
+  private roomId?: string;
+  private assignedPlayerId?: PlayerId;
 
   setSettings(settings: GameSettings): void {
     this.settings = settings;
@@ -39,6 +42,19 @@ export class GameSessionService {
 
   hasSettings(): boolean {
     return this.settings !== undefined;
+  }
+
+  setOnlineSession(data: { roomId: string; assignedPlayerId: PlayerId }): void {
+    this.roomId = data.roomId;
+    this.assignedPlayerId = data.assignedPlayerId;
+  }
+
+  getRoomId(): string | undefined {
+    return this.roomId;
+  }
+
+  getAssignedPlayerId(): PlayerId | undefined {
+    return this.assignedPlayerId;
   }
 
   setResult(result: GameResult): void {
@@ -56,5 +72,7 @@ export class GameSessionService {
   clear(): void {
     this.settings = undefined;
     this.result = undefined;
+    this.roomId = undefined;
+    this.assignedPlayerId = undefined;
   }
 }

@@ -1,7 +1,28 @@
 .waiting-page {
-  max-width: 720px;
+  max-width: 840px;
   margin: 32px auto;
   padding: 0 16px;
+}
+
+.setup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.panel h3 {
+  margin: 0;
 }
 
 .lobby {
@@ -9,6 +30,12 @@
   flex-direction: column;
   gap: 16px;
   padding: 8px 0 4px;
+}
+
+.room-meta {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 .summary {
@@ -25,12 +52,59 @@
   background: rgba(0, 0, 0, 0.03);
 }
 
-.label {
+.room-code {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(25, 118, 210, 0.06);
+}
+
+.code {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.player-card {
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  position: relative;
+}
+
+.player-card.connected {
+  border-style: solid;
+  background: rgba(46, 125, 50, 0.06);
+}
+
+.player-card .label {
   font-weight: 600;
 }
 
-.value {
-  color: rgba(0, 0, 0, 0.82);
+.player-card .name {
+  margin: 4px 0 0;
+  font-size: 16px;
+}
+
+.role {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(25, 118, 210, 0.08);
+  color: #1976d2;
+  font-weight: 600;
 }
 
 .status {
@@ -38,7 +112,7 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 16px;
+  padding: 12px;
   border-radius: 12px;
   background: rgba(25, 118, 210, 0.04);
 }
@@ -49,26 +123,9 @@
   gap: 12px;
 }
 
-.connected {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-}
-
-.status-text {
-  margin: 0;
-}
-
 .actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   justify-content: center;
-}
-
-.info {
-  padding: 12px 4px;
-  color: rgba(0, 0, 0, 0.72);
-  line-height: 1.5;
 }
