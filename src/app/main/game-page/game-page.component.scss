@@ -7,6 +7,10 @@
   justify-content: stretch;
 }
 
+.game-page fil-color-picker {
+  order: 0;
+}
+
 .board {
   position: relative;
   display: flex;
@@ -14,10 +18,18 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
+  order: 1;
 }
 
 .board canvas {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+@media (max-width: 768px) {
+  .game-page fil-color-picker {
+    order: 2;
+    margin-top: 12px;
+  }
 }
