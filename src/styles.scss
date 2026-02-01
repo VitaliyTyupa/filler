@@ -8,8 +8,17 @@ html {
     density: 0
   ));
 }
+
+:root {
+  --font-rubik-spray-paint: 'Rubik Spray Paint', cursive;
+}
+
 body {
   margin: 0;
+}
+
+.rubik-spray-paint {
+  font-family: var(--font-rubik-spray-paint);
 }
 
 .cpu-taunt {
