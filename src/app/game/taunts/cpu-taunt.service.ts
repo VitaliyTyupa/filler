@@ -10,7 +10,7 @@ export class CpuTauntService {
   private isShowing = false;
   private nextAvailableAt = 0;
   private pendingTimer?: number;
-  private readonly cooldownMs = 3000;
+  private readonly cooldownMs = 6000;
 
   constructor(
     private readonly gameService: GameService,
@@ -66,7 +66,7 @@ export class CpuTauntService {
 
     this.isShowing = true;
     const ref = this.snackBar.open(message, undefined, {
-      duration: 2400,
+      duration: this.cooldownMs,
       horizontalPosition: 'center',
       verticalPosition: 'top',
       panelClass: ['cpu-taunt']
