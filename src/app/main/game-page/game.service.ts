@@ -55,6 +55,18 @@ export class GameService {
   private moveQueue: Int32Array = new Int32Array(0);
   private moveDistance: Int16Array = new Int16Array(0);
   private moveIdCounter = 1;
+  private waveQueue: Int32Array = new Int32Array(0);
+  private waveDistance: Int16Array = new Int16Array(0);
+  private waveStamp: Uint32Array = new Uint32Array(0);
+  private waveStampCounter = 1;
+  private prevColorBuffer: Uint8Array = new Uint8Array(0);
+  private animIndicesBuffer: Uint32Array = new Uint32Array(0);
+  private animOwnerBuffer: Uint8Array = new Uint8Array(0);
+  private animColorBuffer: Uint8Array = new Uint8Array(0);
+  private animFromColorBuffer: Uint8Array = new Uint8Array(0);
+  private animToColorBuffer: Uint8Array = new Uint8Array(0);
+  private animDelayBuffer: Float32Array = new Float32Array(0);
+  private animMoveIdBuffer: Uint32Array = new Uint32Array(0);
 
   private diffIndices: Uint32Array = new Uint32Array(0);
   private diffPrevOwner: Uint8Array = new Uint8Array(0);
@@ -1358,29 +1370,23 @@ export class GameService {
     const color = new Uint8Array(state.color);
     const playerColor = new Uint8Array(state.playerColor);
     const diffs: GameGridDiff[] = [];
+    const totalCells = owner.length;
+    this.ensureWaveBuffers(totalCells);
+    this.prevColorBuffer.set(color);
 
-    const recolorIndices: number[] = [];
-    for (let index = 0; index < owner.length; index += 1) {
-      if (owner[index] === playerId && color[index] !== colorIndex) {
+    for (let index = 0; index < totalCells; index += 1) {
+      if (owner[index] === playerId) {
         color[index] = colorIndex;
-        recolorIndices.push(index);
       }
-    }
-
-    if (recolorIndices.length) {
-      const recolorColors = new Uint8Array(recolorIndices.length);
-      recolorColors.fill(colorIndex);
-      diffs.push({
-        indices: new Uint32Array(recolorIndices),
-        color: recolorColors
-      });
     }
 
     playerColor[playerId] = colorIndex;
 
-    const captureDiff = this.captureTerritoryDiff(owner, color, state.cols, state.rows, playerId, colorIndex);
-    if (captureDiff) {
-      diffs.push(captureDiff);
+    this.captureTerritory(owner, color, state.cols, state.rows, playerId, colorIndex);
+
+    const waveDiff = this.buildWaveDiff(owner, colorIndex, playerId, state.cols, state.rows);
+    if (waveDiff) {
+      diffs.push(waveDiff);
     }
 
     const score = this.calculateScore(owner);
@@ -1485,14 +1491,14 @@ export class GameService {
     }
   }
 
-  private captureTerritoryDiff(
+  private captureTerritory(
     owner: Uint8Array,
     color: Uint8Array,
     cols: number,
     rows: number,
     playerId: PlayerId,
     colorIndex: number
-  ): GameGridDiff | null {
+  ): void {
     this.ensureMoveBuffers(owner.length);
     const queue = this.moveQueue;
     const distances = this.moveDistance;
@@ -1506,10 +1512,6 @@ export class GameService {
         distances[index] = 0;
       }
     }
-
-    const capturedIndices: number[] = [];
-    const capturedDistances: number[] = [];
-    let maxDist = 0;
 
     while (head < tail) {
       const current = queue[head++];
@@ -1525,9 +1527,6 @@ export class GameService {
           const nextDist = currentDist + 1;
           distances[neighbor] = nextDist;
           queue[tail++] = neighbor;
-          capturedIndices.push(neighbor);
-          capturedDistances.push(nextDist);
-          maxDist = Math.max(maxDist, nextDist);
         }
       }
 
@@ -1539,9 +1538,6 @@ export class GameService {
           const nextDist = currentDist + 1;
           distances[neighbor] = nextDist;
           queue[tail++] = neighbor;
-          capturedIndices.push(neighbor);
-          capturedDistances.push(nextDist);
-          maxDist = Math.max(maxDist, nextDist);
         }
       }
 
@@ -1553,9 +1549,6 @@ export class GameService {
           const nextDist = currentDist + 1;
           distances[neighbor] = nextDist;
           queue[tail++] = neighbor;
-          capturedIndices.push(neighbor);
-          capturedDistances.push(nextDist);
-          maxDist = Math.max(maxDist, nextDist);
         }
       }
 
@@ -1567,47 +1560,9 @@ export class GameService {
           const nextDist = currentDist + 1;
           distances[neighbor] = nextDist;
           queue[tail++] = neighbor;
-          capturedIndices.push(neighbor);
-          capturedDistances.push(nextDist);
-          maxDist = Math.max(maxDist, nextDist);
         }
       }
     }
-
-    if (!capturedIndices.length) {
-      return null;
-    }
-
-    const capturedCount = capturedIndices.length;
-    const indices = new Uint32Array(capturedIndices);
-    const ownerData = new Uint8Array(capturedCount);
-    const colorData = new Uint8Array(capturedCount);
-    const animFromColor = new Uint8Array(capturedCount);
-    const animToColor = new Uint8Array(capturedCount);
-    const animDelay01 = new Float32Array(capturedCount);
-    const animMoveId = new Uint32Array(capturedCount);
-    const denominator = Math.max(1, maxDist);
-    const moveId = this.moveIdCounter++;
-
-    ownerData.fill(playerId);
-    colorData.fill(colorIndex);
-    animFromColor.fill(colorIndex);
-    animToColor.fill(colorIndex);
-    animMoveId.fill(moveId);
-
-    for (let i = 0; i < capturedCount; i += 1) {
-      animDelay01[i] = capturedDistances[i] / denominator;
-    }
-
-    return {
-      indices,
-      owner: ownerData,
-      color: colorData,
-      animMoveId,
-      animDelay01,
-      animFromColor,
-      animToColor
-    };
   }
 
   private ensureMoveBuffers(size: number): void {
@@ -1615,6 +1570,127 @@ export class GameService {
       this.moveQueue = new Int32Array(size);
       this.moveDistance = new Int16Array(size);
     }
+  }
+
+  private ensureWaveBuffers(size: number): void {
+    if (this.waveQueue.length !== size) {
+      this.waveQueue = new Int32Array(size);
+      this.waveDistance = new Int16Array(size);
+      this.waveStamp = new Uint32Array(size);
+      this.prevColorBuffer = new Uint8Array(size);
+      this.animIndicesBuffer = new Uint32Array(size);
+      this.animOwnerBuffer = new Uint8Array(size);
+      this.animColorBuffer = new Uint8Array(size);
+      this.animFromColorBuffer = new Uint8Array(size);
+      this.animToColorBuffer = new Uint8Array(size);
+      this.animDelayBuffer = new Float32Array(size);
+      this.animMoveIdBuffer = new Uint32Array(size);
+    }
+  }
+
+  private buildWaveDiff(
+    owner: Uint8Array,
+    colorIndex: number,
+    playerId: PlayerId,
+    cols: number,
+    rows: number
+  ): GameGridDiff | null {
+    const totalCells = owner.length;
+    const startIndex = playerId === 1 ? 0 : totalCells - 1;
+    if (owner[startIndex] !== playerId) {
+      return null;
+    }
+
+    const queue = this.waveQueue;
+    const distances = this.waveDistance;
+    const stamp = this.waveStampCounter++;
+    let head = 0;
+    let tail = 0;
+    let maxDist = 0;
+
+    queue[tail++] = startIndex;
+    this.waveStamp[startIndex] = stamp;
+    distances[startIndex] = 0;
+
+    while (head < tail) {
+      const current = queue[head++];
+      const currentDist = distances[current];
+      const row = Math.floor(current / cols);
+      const col = current - row * cols;
+
+      if (col > 0) {
+        const neighbor = current - 1;
+        if (this.waveStamp[neighbor] !== stamp && owner[neighbor] === playerId) {
+          this.waveStamp[neighbor] = stamp;
+          distances[neighbor] = currentDist + 1;
+          maxDist = Math.max(maxDist, distances[neighbor]);
+          queue[tail++] = neighbor;
+        }
+      }
+
+      if (col < cols - 1) {
+        const neighbor = current + 1;
+        if (this.waveStamp[neighbor] !== stamp && owner[neighbor] === playerId) {
+          this.waveStamp[neighbor] = stamp;
+          distances[neighbor] = currentDist + 1;
+          maxDist = Math.max(maxDist, distances[neighbor]);
+          queue[tail++] = neighbor;
+        }
+      }
+
+      if (row > 0) {
+        const neighbor = current - cols;
+        if (this.waveStamp[neighbor] !== stamp && owner[neighbor] === playerId) {
+          this.waveStamp[neighbor] = stamp;
+          distances[neighbor] = currentDist + 1;
+          maxDist = Math.max(maxDist, distances[neighbor]);
+          queue[tail++] = neighbor;
+        }
+      }
+
+      if (row < rows - 1) {
+        const neighbor = current + cols;
+        if (this.waveStamp[neighbor] !== stamp && owner[neighbor] === playerId) {
+          this.waveStamp[neighbor] = stamp;
+          distances[neighbor] = currentDist + 1;
+          maxDist = Math.max(maxDist, distances[neighbor]);
+          queue[tail++] = neighbor;
+        }
+      }
+    }
+
+    const denominator = Math.max(1, maxDist);
+    const moveId = this.moveIdCounter++;
+    let count = 0;
+
+    for (let index = 0; index < totalCells; index += 1) {
+      if (owner[index] !== playerId) {
+        continue;
+      }
+      const dist = this.waveStamp[index] === stamp ? distances[index] : 0;
+      this.animIndicesBuffer[count] = index;
+      this.animOwnerBuffer[count] = playerId;
+      this.animColorBuffer[count] = colorIndex;
+      this.animFromColorBuffer[count] = this.prevColorBuffer[index];
+      this.animToColorBuffer[count] = colorIndex;
+      this.animDelayBuffer[count] = dist / denominator;
+      this.animMoveIdBuffer[count] = moveId;
+      count += 1;
+    }
+
+    if (!count) {
+      return null;
+    }
+
+    return {
+      indices: this.animIndicesBuffer.subarray(0, count),
+      owner: this.animOwnerBuffer.subarray(0, count),
+      color: this.animColorBuffer.subarray(0, count),
+      animMoveId: this.animMoveIdBuffer.subarray(0, count),
+      animDelay01: this.animDelayBuffer.subarray(0, count),
+      animFromColor: this.animFromColorBuffer.subarray(0, count),
+      animToColor: this.animToColorBuffer.subarray(0, count)
+    };
   }
 
   private calculateScore(owner: Uint8Array): Uint16Array {
