@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { GameGridDiff } from './game-grid';
 import { CpuDifficulty } from '../../game-session.service';
 
 export const DEFAULT_PALETTE = ['#2c7be5', '#6f42c1', '#f6c343', '#e63757', '#00d97e', '#39afd1', '#fd7e14'];
@@ -28,6 +29,11 @@ export interface GameState {
   cpuDifficulty?: CpuDifficulty;
 }
 
+export interface GameMoveResult {
+  state: GameState;
+  diffs: GameGridDiff[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class GameService {
   private currentState?: GameState;
@@ -46,6 +52,9 @@ export class GameService {
   private captureStamp: Uint32Array = new Uint32Array(0);
   private frontierStamp: Uint32Array = new Uint32Array(0);
   private stampCounter = 1;
+  private moveQueue: Int32Array = new Int32Array(0);
+  private moveDistance: Int16Array = new Int16Array(0);
+  private moveIdCounter = 1;
 
   private diffIndices: Uint32Array = new Uint32Array(0);
   private diffPrevOwner: Uint8Array = new Uint8Array(0);
@@ -1335,24 +1344,44 @@ export class GameService {
     return false;
   }
 
-  applyMove(state: GameState, playerId: PlayerId, colorIndex: number): GameState {
+  applyMove(state: GameState, playerId: PlayerId, colorIndex: number): GameMoveResult {
     if (playerId !== state.currentPlayer) {
-      return state;
+      return { state, diffs: [] };
     }
 
     const validMoves = this.getValidMoves(state, playerId);
     if (!validMoves[colorIndex]) {
-      return state;
+      return { state, diffs: [] };
     }
 
     const owner = new Uint8Array(state.owner);
     const color = new Uint8Array(state.color);
     const playerColor = new Uint8Array(state.playerColor);
+    const diffs: GameGridDiff[] = [];
 
-    this.recolorTerritory(owner, color, playerId, colorIndex);
+    const recolorIndices: number[] = [];
+    for (let index = 0; index < owner.length; index += 1) {
+      if (owner[index] === playerId && color[index] !== colorIndex) {
+        color[index] = colorIndex;
+        recolorIndices.push(index);
+      }
+    }
+
+    if (recolorIndices.length) {
+      const recolorColors = new Uint8Array(recolorIndices.length);
+      recolorColors.fill(colorIndex);
+      diffs.push({
+        indices: new Uint32Array(recolorIndices),
+        color: recolorColors
+      });
+    }
+
     playerColor[playerId] = colorIndex;
 
-    this.expandTerritory(owner, color, state.cols, state.rows, playerId, colorIndex);
+    const captureDiff = this.captureTerritoryDiff(owner, color, state.cols, state.rows, playerId, colorIndex);
+    if (captureDiff) {
+      diffs.push(captureDiff);
+    }
 
     const score = this.calculateScore(owner);
 
@@ -1367,7 +1396,7 @@ export class GameService {
 
     this.currentState = nextState;
 
-    return nextState;
+    return { state: nextState, diffs };
   }
 
   private fillRandomColors(colors: Uint8Array, paletteSize: number): void {
@@ -1456,48 +1485,135 @@ export class GameService {
     }
   }
 
-  private recolorTerritory(owner: Uint8Array, color: Uint8Array, playerId: PlayerId, colorIndex: number): void {
-    for (let index = 0; index < owner.length; index += 1) {
-      if (owner[index] === playerId) {
-        color[index] = colorIndex;
-      }
-    }
-  }
-
-  private expandTerritory(
+  private captureTerritoryDiff(
     owner: Uint8Array,
     color: Uint8Array,
     cols: number,
     rows: number,
     playerId: PlayerId,
     colorIndex: number
-  ): void {
-    const queue: number[] = [];
+  ): GameGridDiff | null {
+    this.ensureMoveBuffers(owner.length);
+    const queue = this.moveQueue;
+    const distances = this.moveDistance;
+    distances.fill(-1);
+    let head = 0;
+    let tail = 0;
 
     for (let index = 0; index < owner.length; index += 1) {
       if (owner[index] === playerId) {
-        queue.push(index);
+        queue[tail++] = index;
+        distances[index] = 0;
       }
     }
 
-    const visited = new Set<number>(queue);
+    const capturedIndices: number[] = [];
+    const capturedDistances: number[] = [];
+    let maxDist = 0;
 
-    while (queue.length) {
-      const current = queue.shift() as number;
-      const neighbors = this.getNeighbors(current, cols, rows);
+    while (head < tail) {
+      const current = queue[head++];
+      const currentDist = distances[current];
+      const row = Math.floor(current / cols);
+      const col = current - row * cols;
 
-      neighbors.forEach((neighbor) => {
-        if (visited.has(neighbor)) {
-          return;
-        }
-
-        if (owner[neighbor] !== playerId && color[neighbor] === colorIndex) {
+      if (col > 0) {
+        const neighbor = current - 1;
+        if (distances[neighbor] < 0 && owner[neighbor] !== playerId && color[neighbor] === colorIndex) {
           owner[neighbor] = playerId;
           color[neighbor] = colorIndex;
-          visited.add(neighbor);
-          queue.push(neighbor);
+          const nextDist = currentDist + 1;
+          distances[neighbor] = nextDist;
+          queue[tail++] = neighbor;
+          capturedIndices.push(neighbor);
+          capturedDistances.push(nextDist);
+          maxDist = Math.max(maxDist, nextDist);
         }
-      });
+      }
+
+      if (col < cols - 1) {
+        const neighbor = current + 1;
+        if (distances[neighbor] < 0 && owner[neighbor] !== playerId && color[neighbor] === colorIndex) {
+          owner[neighbor] = playerId;
+          color[neighbor] = colorIndex;
+          const nextDist = currentDist + 1;
+          distances[neighbor] = nextDist;
+          queue[tail++] = neighbor;
+          capturedIndices.push(neighbor);
+          capturedDistances.push(nextDist);
+          maxDist = Math.max(maxDist, nextDist);
+        }
+      }
+
+      if (row > 0) {
+        const neighbor = current - cols;
+        if (distances[neighbor] < 0 && owner[neighbor] !== playerId && color[neighbor] === colorIndex) {
+          owner[neighbor] = playerId;
+          color[neighbor] = colorIndex;
+          const nextDist = currentDist + 1;
+          distances[neighbor] = nextDist;
+          queue[tail++] = neighbor;
+          capturedIndices.push(neighbor);
+          capturedDistances.push(nextDist);
+          maxDist = Math.max(maxDist, nextDist);
+        }
+      }
+
+      if (row < rows - 1) {
+        const neighbor = current + cols;
+        if (distances[neighbor] < 0 && owner[neighbor] !== playerId && color[neighbor] === colorIndex) {
+          owner[neighbor] = playerId;
+          color[neighbor] = colorIndex;
+          const nextDist = currentDist + 1;
+          distances[neighbor] = nextDist;
+          queue[tail++] = neighbor;
+          capturedIndices.push(neighbor);
+          capturedDistances.push(nextDist);
+          maxDist = Math.max(maxDist, nextDist);
+        }
+      }
+    }
+
+    if (!capturedIndices.length) {
+      return null;
+    }
+
+    const capturedCount = capturedIndices.length;
+    const indices = new Uint32Array(capturedIndices);
+    const ownerData = new Uint8Array(capturedCount);
+    const colorData = new Uint8Array(capturedCount);
+    const animFromColor = new Uint8Array(capturedCount);
+    const animToColor = new Uint8Array(capturedCount);
+    const animDelay01 = new Float32Array(capturedCount);
+    const animMoveId = new Uint32Array(capturedCount);
+    const denominator = Math.max(1, maxDist);
+    const moveId = this.moveIdCounter++;
+
+    ownerData.fill(playerId);
+    colorData.fill(colorIndex);
+    animFromColor.fill(colorIndex);
+    animToColor.fill(colorIndex);
+    animMoveId.fill(moveId);
+
+    for (let i = 0; i < capturedCount; i += 1) {
+      animDelay01[i] = capturedDistances[i] / denominator;
+    }
+
+    return {
+      indices,
+      owner: ownerData,
+      color: colorData,
+      animMoveId,
+      animDelay01,
+      animFromColor,
+      animToColor
+    };
+  }
+
+  private ensureMoveBuffers(size: number): void {
+    if (this.moveQueue.length !== size) {
+      this.moveQueue = new Int32Array(size);
+      this.moveDistance = new Int16Array(size);
     }
   }
 

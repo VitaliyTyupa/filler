@@ -2,6 +2,7 @@ import {
   BoxGeometry, BufferAttribute,
   Color,
   CanvasTexture,
+  InstancedBufferAttribute,
   InstancedMesh,
   MeshBasicMaterial,
   Object3D,
@@ -25,6 +26,10 @@ export type GameGridDiff = {
   color?: Uint8Array;
   effect?: Uint8Array;
   type?: Uint8Array;
+  animMoveId?: Uint32Array;
+  animDelay01?: Float32Array;
+  animFromColor?: Uint8Array;
+  animToColor?: Uint8Array;
 };
 
 export type GameGridParams = {
@@ -56,8 +61,25 @@ export class GameGrid {
   private colorData?: Uint8Array;
   private effectData?: Uint8Array;
   private typeData?: Uint8Array;
+  private animT0Data?: Float32Array;
+  private animDelayData?: Float32Array;
+  private animFromColorData?: Uint8Array;
+  private animToColorData?: Uint8Array;
+  private animT0Attr?: InstancedBufferAttribute;
+  private animDelayAttr?: InstancedBufferAttribute;
+  private animFromColorAttr?: InstancedBufferAttribute;
+  private animToColorAttr?: InstancedBufferAttribute;
+  private shaderUniforms?: {
+    uTime: { value: number };
+    uAnimDuration: { value: number };
+    uMaxWaveDelay: { value: number };
+    uPalette: { value: Color[] };
+  };
+  private moveStartTimes = new Map<number, number>();
 
   private readonly defaultColor = new Color(0x2c7be5);
+  private readonly animDuration = 0.5;
+  private readonly maxWaveDelay = 0.25;
 
   constructor(params: GameGridParams) {
     this.canvas = params.canvas;
@@ -86,6 +108,10 @@ export class GameGrid {
     const renderLoop = () => {
       if (!this.renderer || !this.scene || !this.camera) {
         return;
+      }
+
+      if (this.shaderUniforms) {
+        this.shaderUniforms.uTime.value = performance.now() * 0.001;
       }
 
       this.animationFrameId = requestAnimationFrame(renderLoop);
@@ -132,6 +158,7 @@ export class GameGrid {
 
   setPalette(palette: string[]): void {
     this.paletteColors = palette.map((color) => new Color(color));
+    this.updatePaletteUniform();
     this.refreshAllColors();
   }
 
@@ -149,9 +176,18 @@ export class GameGrid {
       return;
     }
 
-    const indices = Array.from(diff.indices);
+    const indices = diff.indices;
+    const hasAnim =
+      !!diff.animFromColor &&
+      !!diff.animToColor &&
+      !!diff.animDelay01;
+    const nowSeconds = performance.now() * 0.001;
+    let animNeedsUpdate = false;
+    let delayNeedsUpdate = false;
+    let colorNeedsUpdate = false;
 
-    indices.forEach((index, idx) => {
+    for (let idx = 0; idx < indices.length; idx += 1) {
+      const index = indices[idx];
       if (diff.owner && this.ownerData) {
         this.ownerData[index] = diff.owner[idx];
       }
@@ -159,6 +195,7 @@ export class GameGrid {
       if (diff.color && this.colorData) {
         this.colorData[index] = diff.color[idx];
         this.applyColorToInstance(index);
+        colorNeedsUpdate = true;
       }
 
       if (diff.effect && this.effectData) {
@@ -168,10 +205,42 @@ export class GameGrid {
       if (diff.type && this.typeData) {
         this.typeData[index] = diff.type[idx];
       }
-    });
 
-    if (this.boardMesh.instanceColor) {
-      this.boardMesh.instanceColor.needsUpdate = true;
+      if (this.animFromColorData && this.animToColorData) {
+        if (hasAnim && diff.animFromColor && diff.animToColor) {
+          this.animFromColorData[index] = diff.animFromColor[idx];
+          this.animToColorData[index] = diff.animToColor[idx];
+          colorNeedsUpdate = true;
+        }
+      }
+
+      if (this.animDelayData && this.animT0Data) {
+        if (hasAnim && diff.animDelay01) {
+          this.animDelayData[index] = diff.animDelay01[idx];
+          const moveId = diff.animMoveId?.[idx];
+          this.animT0Data[index] = this.getMoveStartTime(moveId, nowSeconds);
+          animNeedsUpdate = true;
+          delayNeedsUpdate = true;
+        } else {
+          this.animDelayData[index] = 0;
+          this.animT0Data[index] = 0;
+          animNeedsUpdate = true;
+          delayNeedsUpdate = true;
+        }
+      }
+    }
+
+    if (this.animFromColorAttr && this.animToColorAttr && colorNeedsUpdate) {
+      this.animFromColorAttr.needsUpdate = true;
+      this.animToColorAttr.needsUpdate = true;
+    }
+
+    if (this.animDelayAttr && delayNeedsUpdate) {
+      this.animDelayAttr.needsUpdate = true;
+    }
+
+    if (this.animT0Attr && animNeedsUpdate) {
+      this.animT0Attr.needsUpdate = true;
     }
   }
 
@@ -229,6 +298,65 @@ export class GameGrid {
     });
     cellMaterial.vertexColors = true;
     cellMaterial.needsUpdate = true;
+    const paletteSize = Math.max(this.paletteColors.length, 1);
+    cellMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms['uTime'] = { value: 0 };
+      shader.uniforms['uAnimDuration'] = { value: this.animDuration };
+      shader.uniforms['uMaxWaveDelay'] = { value: this.maxWaveDelay };
+      shader.uniforms['uPalette'] = { value: this.getShaderPalette().map((color) => color.clone()) };
+
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          '#include <common>',
+          `#include <common>
+attribute float aAnimT0;
+attribute float aAnimDelay01;
+attribute float aFromColorIndex;
+attribute float aToColorIndex;
+uniform float uTime;
+uniform float uAnimDuration;
+uniform float uMaxWaveDelay;
+varying float vFlipT;
+varying float vFromIndex;
+varying float vToIndex;`
+        )
+        .replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+float delay = aAnimDelay01 * uMaxWaveDelay;
+float t = clamp((uTime - (aAnimT0 + delay)) / uAnimDuration, 0.0, 1.0);
+float e = smoothstep(0.0, 1.0, t);
+float squash = abs(cos(e * 3.14159265));
+transformed.z += (1.0 - squash) * 0.12;
+transformed.y *= max(0.05, squash);
+vFlipT = t;
+vFromIndex = aFromColorIndex;
+vToIndex = aToColorIndex;`
+        );
+
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          '#include <common>',
+          `#include <common>
+uniform vec3 uPalette[${paletteSize}];
+varying float vFlipT;
+varying float vFromIndex;
+varying float vToIndex;`
+        )
+        .replace(
+          '#include <color_fragment>',
+          `vec3 fromC = uPalette[int(vFromIndex)];
+vec3 toC = uPalette[int(vToIndex)];
+float t = vFlipT;
+vec3 baseC = t < 0.5 ? fromC : toC;
+float glow = sin(t * 3.14159265) * 0.25;
+baseC += glow;
+diffuseColor.rgb = baseC;`
+        );
+
+      this.shaderUniforms = shader.uniforms as typeof this.shaderUniforms;
+    };
+
     const totalCells = cols * rows;
     const instancedMesh = new InstancedMesh(cellGeometry, cellMaterial, totalCells);
 
@@ -236,17 +364,33 @@ export class GameGrid {
     this.boardMesh = instancedMesh;
 
     const tempObject = new Object3D();
+    const animT0Data = new Float32Array(totalCells);
+    const animDelayData = new Float32Array(totalCells);
+    const animFromColorData = new Uint8Array(totalCells);
+    const animToColorData = new Uint8Array(totalCells);
+    const initialColors = this.colorData ?? this.gridConfig.colors;
+    animFromColorData.set(initialColors);
+    animToColorData.set(initialColors);
+    this.animT0Data = animT0Data;
+    this.animDelayData = animDelayData;
+    this.animFromColorData = animFromColorData;
+    this.animToColorData = animToColorData;
 
     for (let index = 0; index < cols * rows; index++) {
       tempObject.position.set(0, 0, 0);
       tempObject.updateMatrix();
       instancedMesh.setMatrixAt(index, tempObject.matrix);
-
-      const c = this.paletteColors[0] ?? this.defaultColor;
-      instancedMesh.setColorAt(index, c);
     }
 
-    if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+    this.animT0Attr = new InstancedBufferAttribute(animT0Data, 1);
+    this.animDelayAttr = new InstancedBufferAttribute(animDelayData, 1);
+    this.animFromColorAttr = new InstancedBufferAttribute(animFromColorData, 1, false);
+    this.animToColorAttr = new InstancedBufferAttribute(animToColorData, 1, false);
+
+    instancedMesh.geometry.setAttribute('aAnimT0', this.animT0Attr);
+    instancedMesh.geometry.setAttribute('aAnimDelay01', this.animDelayAttr);
+    instancedMesh.geometry.setAttribute('aFromColorIndex', this.animFromColorAttr);
+    instancedMesh.geometry.setAttribute('aToColorIndex', this.animToColorAttr);
 
     this.scene.add(instancedMesh);
 
@@ -356,28 +500,45 @@ export class GameGrid {
     }
 
     const totalCells = this.gridConfig.cols * this.gridConfig.rows;
+    let colorsNeedUpdate = false;
+    let animNeedsUpdate = false;
+    let delayNeedsUpdate = false;
 
     for (let index = 0; index < totalCells; index += 1) {
       this.applyColorToInstance(index);
+      colorsNeedUpdate = true;
+
+      if (this.animDelayData && this.animT0Data) {
+        this.animDelayData[index] = 0;
+        this.animT0Data[index] = 0;
+        animNeedsUpdate = true;
+        delayNeedsUpdate = true;
+      }
     }
 
-    if (this.boardMesh.instanceColor) {
-      this.boardMesh.instanceColor.needsUpdate = true;
+    if (colorsNeedUpdate && this.animFromColorAttr && this.animToColorAttr) {
+      this.animFromColorAttr.needsUpdate = true;
+      this.animToColorAttr.needsUpdate = true;
+    }
+
+    if (animNeedsUpdate && this.animT0Attr) {
+      this.animT0Attr.needsUpdate = true;
+    }
+
+    if (delayNeedsUpdate && this.animDelayAttr) {
+      this.animDelayAttr.needsUpdate = true;
     }
   }
 
   private applyColorToInstance(index: number): void {
-    if (!this.boardMesh) {
+    if (!this.boardMesh || !this.animFromColorData || !this.animToColorData) {
       return;
     }
 
     const colorIndex = this.colorData ? this.colorData[index] : undefined;
-    const color =
-      (colorIndex !== undefined && this.paletteColors[colorIndex]) ||
-      this.paletteColors[0] ||
-      this.defaultColor;
-
-    this.boardMesh.setColorAt(index, color);
+    const resolvedColorIndex = colorIndex ?? 0;
+    this.animFromColorData[index] = resolvedColorIndex;
+    this.animToColorData[index] = resolvedColorIndex;
   }
 
   private disposeMarker(marker?: Sprite): void {
@@ -391,5 +552,31 @@ export class GameGrid {
     }
 
     this.scene?.remove(marker);
+  }
+
+  private getShaderPalette(): Color[] {
+    return this.paletteColors.length ? this.paletteColors : [this.defaultColor];
+  }
+
+  private updatePaletteUniform(): void {
+    if (!this.shaderUniforms) {
+      return;
+    }
+
+    this.shaderUniforms.uPalette.value = this.getShaderPalette().map((color) => color.clone());
+  }
+
+  private getMoveStartTime(moveId: number | undefined, nowSeconds: number): number {
+    if (moveId === undefined) {
+      return nowSeconds;
+    }
+
+    const existing = this.moveStartTimes.get(moveId);
+    if (existing !== undefined) {
+      return existing;
+    }
+
+    this.moveStartTimes.set(moveId, nowSeconds);
+    return nowSeconds;
   }
 }

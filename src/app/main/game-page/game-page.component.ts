@@ -171,14 +171,19 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    this.state = this.gameService.applyMove(this.state, playerId, colorIndex);
+    const result = this.gameService.applyMove(this.state, playerId, colorIndex);
+    this.state = result.state;
     this.updateUsersWithScore();
     this.updateValidMoves();
 
     console.log('scores', this.state.score[1], this.state.score[2]);
 
     if (this.grid) {
-      this.grid.setGridData({ owner: this.state.owner, color: this.state.color });
+      if (result.diffs.length) {
+        result.diffs.forEach((diff) => this.grid?.applyDiff(diff));
+      } else {
+        this.grid.setGridData({ owner: this.state.owner, color: this.state.color });
+      }
     }
   }
 
