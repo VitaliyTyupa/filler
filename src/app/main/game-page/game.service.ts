@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Subject } from 'rxjs';
 import { GameGridDiff } from './game-grid';
 import { CpuDifficulty } from '../../game-session.service';
 
@@ -34,8 +35,26 @@ export interface GameMoveResult {
   diffs: GameGridDiff[];
 }
 
+export type CpuTauntEvent = {
+  tone: 'winning' | 'losing' | 'neutral' | 'endWinning' | 'endLosing';
+  milestone?: 10 | 30 | 50 | 70 | 90;
+  seed: number;
+};
+
 @Injectable({ providedIn: 'root' })
 export class GameService {
+  private static readonly TAUNT_MILESTONES: Array<10 | 30 | 50 | 70 | 90> = [10, 30, 50, 70, 90];
+  private static readonly TAUNT_TONE_IDS: Record<CpuTauntEvent['tone'], number> = {
+    winning: 1,
+    losing: 2,
+    neutral: 3,
+    endWinning: 4,
+    endLosing: 5
+  };
+
+  private readonly cpuTauntSubject = new Subject<CpuTauntEvent>();
+  public readonly cpuTaunts$ = this.cpuTauntSubject.asObservable();
+
   private currentState?: GameState;
   private simOwner?: Uint8Array;
   private simColor?: Uint8Array;
@@ -98,6 +117,10 @@ export class GameService {
   private beamScores: number[] = [];
   private activeCpuPlayerId: PlayerId = 2;
   private activeHumanPlayerId: PlayerId = 1;
+  private gameSeed = 0;
+  private moveNumber = 0;
+  private milestonesFired = 0;
+  private endTauntFired = false;
   getUsers(): Array<{ id: number; name: string }> {
     return [
       { id: 1, name: 'Player 1' },
@@ -165,6 +188,10 @@ export class GameService {
     };
 
     this.currentState = state;
+    this.gameSeed = Date.now() >>> 0;
+    this.moveNumber = 0;
+    this.milestonesFired = 0;
+    this.endTauntFired = false;
 
     return state;
   }
@@ -1401,8 +1428,83 @@ export class GameService {
     };
 
     this.currentState = nextState;
+    this.handleCpuTaunts(nextState);
 
     return { state: nextState, diffs };
+  }
+
+  private handleCpuTaunts(state: GameState): void {
+    if (!state.cpuPlayerId) {
+      return;
+    }
+
+    this.moveNumber += 1;
+
+    const totalCells = state.cols * state.rows;
+    const ownedCells = state.score[1] + state.score[2];
+    const progressPct = (ownedCells / totalCells) * 100;
+
+    for (const milestone of GameService.TAUNT_MILESTONES) {
+      const bit = this.getMilestoneBit(milestone);
+      if (progressPct >= milestone && (this.milestonesFired & bit) === 0) {
+        this.milestonesFired |= bit;
+        const tone = this.getProgressTone(state, totalCells);
+        this.emitCpuTaunt(tone, milestone);
+      }
+    }
+
+    if (!this.endTauntFired && this.isGameOver(state)) {
+      this.endTauntFired = true;
+      const endTone = this.getEndTone(state);
+      this.emitCpuTaunt(endTone);
+    }
+  }
+
+  private emitCpuTaunt(tone: CpuTauntEvent['tone'], milestone?: CpuTauntEvent['milestone']): void {
+    const toneId = GameService.TAUNT_TONE_IDS[tone];
+    const seed = (this.gameSeed ^ this.moveNumber ^ (milestone ?? 0) ^ toneId) >>> 0;
+    this.cpuTauntSubject.next({ tone, milestone, seed });
+  }
+
+  private getProgressTone(state: GameState, totalCells: number): CpuTauntEvent['tone'] {
+    const cpuId = state.cpuPlayerId ?? 2;
+    const humanId: PlayerId = cpuId === 1 ? 2 : 1;
+    const cpuOwned = state.score[cpuId];
+    const humanOwned = state.score[humanId];
+    const diff = cpuOwned - humanOwned;
+    const margin = Math.max(3, Math.round(totalCells * 0.02));
+
+    if (diff > margin) {
+      return 'winning';
+    }
+
+    if (diff < -margin) {
+      return 'losing';
+    }
+
+    return 'neutral';
+  }
+
+  private getEndTone(state: GameState): CpuTauntEvent['tone'] {
+    const cpuId = state.cpuPlayerId ?? 2;
+    const humanId: PlayerId = cpuId === 1 ? 2 : 1;
+    return state.score[cpuId] > state.score[humanId] ? 'endWinning' : 'endLosing';
+  }
+
+  private getMilestoneBit(milestone: CpuTauntEvent['milestone']): number {
+    switch (milestone) {
+      case 10:
+        return 1 << 0;
+      case 30:
+        return 1 << 1;
+      case 50:
+        return 1 << 2;
+      case 70:
+        return 1 << 3;
+      case 90:
+      default:
+        return 1 << 4;
+    }
   }
 
   private fillRandomColors(colors: Uint8Array, paletteSize: number): void {
