@@ -1,4 +1,5 @@
 export const BOARD_PRESETS: Array<{ label: string; cols: number; rows: number }> = [
+  { label: '25×40 Для Мобілки', cols: 25, rows: 40 },
   { label: '25×20', cols: 25, rows: 20 },
   { label: '50×40', cols: 50, rows: 40 },
   { label: '80×70', cols: 80, rows: 70 },

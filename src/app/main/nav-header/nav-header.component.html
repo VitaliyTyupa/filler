@@ -3,9 +3,6 @@
   <span class="brand">Filler</span>
   <span class="spacer"></span>
   <div class="actions" *ngIf="hasSettings; else newSession">
-    <button mat-stroked-button color="accent" (click)="restart()">
-      Почати гру з початку
-    </button>
     <button mat-flat-button color="primary" (click)="newGame()">
       Налаштувати нову гру
     </button>
