@@ -70,6 +70,8 @@ export class GameService {
   private adjacentColorFlags: Uint8Array = new Uint8Array(0);
   private candidateColors: number[] = [];
   private candidateGains: number[] = [];
+  private preferredColors: number[] = [];
+  private allAllowedColors: number[] = [];
   private beamFirstColors: number[] = [];
   private beamSecondColors: number[] = [];
   private beamScores: number[] = [];
@@ -217,7 +219,7 @@ export class GameService {
   private pickStandardMove(): number {
     const cpuPlayerId = this.activeCpuPlayerId;
     const validMoves = this.getValidMovesForSimulation(cpuPlayerId);
-    const candidateColors = this.collectAdjacentColors(cpuPlayerId, validMoves);
+    const candidateColors = this.collectAdjacentColors(cpuPlayerId, validMoves, this.preferredColors);
 
     if (!candidateColors.length) {
       for (let colorIndex = 0; colorIndex < this.simPaletteSize; colorIndex += 1) {
@@ -237,29 +239,29 @@ export class GameService {
 
   private pickMasterMove(): number {
     const cpuPlayerId = this.activeCpuPlayerId;
-    const validMoves = this.getValidMovesForSimulation(cpuPlayerId);
+    const preferredCandidates = this.getPreferredCpuColors(cpuPlayerId);
+    let bestGain = this.getBestGainFromCandidates(cpuPlayerId, preferredCandidates);
+    let candidates = preferredCandidates;
 
-    let bestColor = this.simPlayerColor?.[cpuPlayerId] ?? 0;
-    let bestGain = -1;
+    if (bestGain === 0) {
+      candidates = this.getAllAllowedColors(cpuPlayerId);
+      bestGain = this.getBestGainFromCandidates(cpuPlayerId, candidates);
+    }
+
+    let bestColor = candidates.length
+      ? candidates[0]
+      : (this.simPlayerColor?.[cpuPlayerId] ?? 0);
     let bestPotential = -1;
 
-    for (let colorIndex = 0; colorIndex < this.simPaletteSize; colorIndex += 1) {
-      if (!validMoves[colorIndex]) {
-        continue;
-      }
-
+    for (const colorIndex of candidates) {
       const gain = this.evaluateImmediateGain(colorIndex, cpuPlayerId);
-
       if (gain < bestGain) {
         continue;
       }
 
-      let potential = bestPotential;
-      if (gain > bestGain || gain === bestGain) {
-        const diff = this.simulateMove(colorIndex, cpuPlayerId);
-        potential = this.estimateExpansionPotential(cpuPlayerId);
-        this.revertSimulation(diff);
-      }
+      const diff = this.simulateMove(colorIndex, cpuPlayerId);
+      const potential = this.estimateExpansionPotential(cpuPlayerId);
+      this.revertSimulation(diff);
 
       if (
         gain > bestGain
@@ -294,7 +296,20 @@ export class GameService {
     beamFirst.length = 0;
     beamSecond.length = 0;
     beamScores.length = 0;
-    const depth1Count = this.collectTopColorsByGain(cpuPlayerId, maxCandidates, candidateColors, candidateGains);
+    const preferredCandidates = this.getPreferredCpuColors(cpuPlayerId);
+    const preferredBestGain = this.getBestGainFromCandidates(cpuPlayerId, preferredCandidates);
+    const useAllAllowed = preferredBestGain === 0;
+    const candidatePool = useAllAllowed ? this.getAllAllowedColors(cpuPlayerId) : preferredCandidates;
+    const fallbackColor = candidatePool.length
+      ? candidatePool[0]
+      : (this.simPlayerColor?.[cpuPlayerId] ?? 0);
+    const depth1Count = this.collectTopColorsByGainFromCandidates(
+      cpuPlayerId,
+      candidatePool,
+      maxCandidates,
+      candidateColors,
+      candidateGains
+    );
     beamCount = 0;
 
     for (let i = 0; i < depth1Count; i += 1) {
@@ -322,7 +337,13 @@ export class GameService {
           diff2 = this.simulateMove(color2, cpuPlayerId);
         }
 
-        const candidates = this.collectTopColorsByGain(cpuPlayerId, maxCandidates, candidateColors, candidateGains);
+        const candidates = this.collectTopColorsByGainFromCandidates(
+          cpuPlayerId,
+          useAllAllowed ? this.getAllAllowedColors(cpuPlayerId) : this.getPreferredCpuColors(cpuPlayerId),
+          maxCandidates,
+          candidateColors,
+          candidateGains
+        );
         for (let j = 0; j < candidates; j += 1) {
           const nextColor = candidateColors[j];
           const diff = this.simulateMove(nextColor, cpuPlayerId);
@@ -368,6 +389,10 @@ export class GameService {
       }
     }
 
+    if (bestScore === -Infinity) {
+      return fallbackColor;
+    }
+
     return bestColor;
   }
 
@@ -383,17 +408,43 @@ export class GameService {
     let bestColor = this.simPlayerColor?.[cpuPlayerId] ?? 0;
     let bestScore = -Infinity;
 
-    const candidateCount = this.collectTopColorsByGain(cpuPlayerId, maxCandidates, candidateColors, candidateGains);
+    const preferredCandidates = this.getPreferredCpuColors(cpuPlayerId);
+    const preferredBestGain = this.getBestGainFromCandidates(cpuPlayerId, preferredCandidates);
+    const useAllAllowed = preferredBestGain === 0;
+    const candidatePool = useAllAllowed ? this.getAllAllowedColors(cpuPlayerId) : preferredCandidates;
+    const fallbackColor = candidatePool.length
+      ? candidatePool[0]
+      : (this.simPlayerColor?.[cpuPlayerId] ?? 0);
+    const candidateCount = this.collectTopColorsByGainFromCandidates(
+      cpuPlayerId,
+      candidatePool,
+      maxCandidates,
+      candidateColors,
+      candidateGains
+    );
     for (let i = 0; i < candidateCount; i += 1) {
       const color = candidateColors[i];
       const diff = this.simulateMove(color, cpuPlayerId);
-      const score = this.minimax(depth - 1, humanPlayerId, cpuPlayerId, humanPlayerId, -Infinity, Infinity, maxCandidates);
+      const score = this.minimax(
+        depth - 1,
+        humanPlayerId,
+        cpuPlayerId,
+        humanPlayerId,
+        -Infinity,
+        Infinity,
+        maxCandidates,
+        useAllAllowed
+      );
       this.revertSimulation(diff);
 
       if (score > bestScore || (score === bestScore && color < bestColor)) {
         bestScore = score;
         bestColor = color;
       }
+    }
+
+    if (!candidateCount) {
+      return fallbackColor;
     }
 
     return bestColor;
@@ -406,7 +457,8 @@ export class GameService {
     humanPlayerId: PlayerId,
     alpha: number,
     beta: number,
-    maxCandidates: number
+    maxCandidates: number,
+    useAllAllowed: boolean
   ): number {
     if (depth <= 0 || this.isSimulationGameOver()) {
       const cpuScore = this.evaluateState(cpuPlayerId);
@@ -416,7 +468,16 @@ export class GameService {
 
     const candidateColors = this.candidateColors;
     const candidateGains = this.candidateGains;
-    const candidateCount = this.collectTopColorsByGain(currentPlayer, maxCandidates, candidateColors, candidateGains);
+    const candidateSource = useAllAllowed
+      ? this.getAllAllowedColors(currentPlayer)
+      : this.getPreferredCpuColors(currentPlayer);
+    const candidateCount = this.collectTopColorsByGainFromCandidates(
+      currentPlayer,
+      candidateSource,
+      maxCandidates,
+      candidateColors,
+      candidateGains
+    );
 
     if (!candidateCount) {
       const cpuScore = this.evaluateState(cpuPlayerId);
@@ -436,7 +497,8 @@ export class GameService {
         humanPlayerId,
         alpha,
         beta,
-        maxCandidates
+        maxCandidates,
+        useAllAllowed
       );
       this.revertSimulation(diff);
 
@@ -529,7 +591,7 @@ export class GameService {
     return validMoves;
   }
 
-  private collectAdjacentColors(playerId: PlayerId, validMoves: Uint8Array): number[] {
+  private collectAdjacentColors(playerId: PlayerId, validMoves: Uint8Array, output: number[]): number[] {
     const adjacentFlags = this.adjacentColorFlags;
     adjacentFlags.fill(0);
 
@@ -598,7 +660,7 @@ export class GameService {
       }
     }
 
-    const result = this.candidateColors;
+    const result = output;
     result.length = 0;
     for (let colorIndex = 0; colorIndex < this.simPaletteSize; colorIndex += 1) {
       if (adjacentFlags[colorIndex] && validMoves[colorIndex]) {
@@ -607,6 +669,38 @@ export class GameService {
     }
 
     return result;
+  }
+
+  private getPreferredCpuColors(playerId: PlayerId): number[] {
+    const validMoves = this.getValidMovesForSimulation(playerId);
+    return this.collectAdjacentColors(playerId, validMoves, this.preferredColors);
+  }
+
+  private getAllAllowedColors(playerId: PlayerId): number[] {
+    const validMoves = this.getValidMovesForSimulation(playerId);
+    const result = this.allAllowedColors;
+    result.length = 0;
+
+    for (let colorIndex = 0; colorIndex < this.simPaletteSize; colorIndex += 1) {
+      if (validMoves[colorIndex]) {
+        result.push(colorIndex);
+      }
+    }
+
+    return result;
+  }
+
+  private getBestGainFromCandidates(playerId: PlayerId, candidates: number[]): number {
+    let bestGain = 0;
+
+    for (const colorIndex of candidates) {
+      const gain = this.evaluateImmediateGain(colorIndex, playerId);
+      if (gain > bestGain) {
+        bestGain = gain;
+      }
+    }
+
+    return bestGain;
   }
 
   private collectTopColorsByGain(
@@ -624,6 +718,50 @@ export class GameService {
         continue;
       }
 
+      const gain = this.evaluateImmediateGain(colorIndex, playerId);
+      let insertAt = colorsOut.length;
+
+      while (insertAt > 0) {
+        const prevGain = gainsOut[insertAt - 1];
+        const prevColor = colorsOut[insertAt - 1];
+        if (gain < prevGain || (gain === prevGain && colorIndex > prevColor)) {
+          break;
+        }
+        insertAt -= 1;
+      }
+
+      if (insertAt >= maxCount) {
+        continue;
+      }
+
+      const currentLength = colorsOut.length;
+      if (currentLength < maxCount) {
+        colorsOut.length = currentLength + 1;
+        gainsOut.length = currentLength + 1;
+      }
+
+      for (let shift = Math.min(currentLength, maxCount - 1); shift > insertAt; shift -= 1) {
+        colorsOut[shift] = colorsOut[shift - 1];
+        gainsOut[shift] = gainsOut[shift - 1];
+      }
+      colorsOut[insertAt] = colorIndex;
+      gainsOut[insertAt] = gain;
+    }
+
+    return colorsOut.length;
+  }
+
+  private collectTopColorsByGainFromCandidates(
+    playerId: PlayerId,
+    candidates: number[],
+    maxCount: number,
+    colorsOut: number[],
+    gainsOut: number[]
+  ): number {
+    colorsOut.length = 0;
+    gainsOut.length = 0;
+
+    for (const colorIndex of candidates) {
       const gain = this.evaluateImmediateGain(colorIndex, playerId);
       let insertAt = colorsOut.length;
 
