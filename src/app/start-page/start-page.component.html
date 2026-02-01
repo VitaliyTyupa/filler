@@ -33,6 +33,17 @@
         </mat-select>
       </mat-form-field>
 
+      @if (isCpuMode) {
+        <mat-form-field appearance="outline" class="form-field">
+          <mat-label>CPU difficulty</mat-label>
+          <mat-select formControlName="cpuDifficulty">
+            @for (difficulty of cpuDifficulties; track difficulty) {
+              <mat-option [value]="difficulty">{{ cpuDifficultyLabels[difficulty] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+
       <mat-form-field appearance="outline" class="form-field">
         <mat-label>Player 1 name</mat-label>
         <input matInput id="player1Name" type="text" formControlName="player1Name" placeholder="Enter your name" />

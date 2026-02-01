@@ -64,7 +64,9 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.state = this.gameService.generateInitialState({
       cols: board.cols,
       rows: board.rows,
-      paletteSize: this.palette.length
+      paletteSize: this.palette.length,
+      cpuPlayerId: this.cpuPlayerId,
+      cpuDifficulty: this.settings.cpuDifficulty
     });
 
     this.updateUsersWithScore();
@@ -126,7 +128,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
           return;
         }
 
-        const cpuColor = this.gameService.pickCpuMove(this.state, this.cpuPlayerId);
+        const cpuColor = this.gameService.pickCpuMove();
         this.applyMoveAndUpdate(this.cpuPlayerId, cpuColor);
 
         if (this.afterMoveCheck()) {

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 
 export type GameMode = 'cpu' | 'local' | 'online';
+export type CpuDifficulty = 'standard' | 'master' | 'champion' | 'ultra';
 
 export type BoardPreset =
   | { cols: 25; rows: 20 }
@@ -14,6 +15,7 @@ export interface GameSettings {
   board: { cols: number; rows: number };
   paletteSize: 5 | 7 | 10;
   players: Array<{ id: 1 | 2; name: string; isCpu?: boolean }>;
+  cpuDifficulty?: CpuDifficulty;
 }
 
 export interface GameResult {

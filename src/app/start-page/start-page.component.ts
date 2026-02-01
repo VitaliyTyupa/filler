@@ -17,7 +17,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { BOARD_PRESETS } from '../game.constants';
-import { GameMode, GameSessionService, GameSettings } from '../game-session.service';
+import { CpuDifficulty, GameMode, GameSessionService, GameSettings } from '../game-session.service';
 
 type BoardPresetOption = (typeof BOARD_PRESETS)[number];
 
@@ -46,6 +46,13 @@ export class StartPageComponent {
     local: 'З іншим гравцем на одному комп\'ютері',
     online: 'З іншим гравцем онлайн'
   };
+  readonly cpuDifficulties: CpuDifficulty[] = ['standard', 'master', 'champion', 'ultra'];
+  readonly cpuDifficultyLabels: Record<CpuDifficulty, string> = {
+    standard: 'Standard',
+    master: 'Master',
+    champion: 'Champion',
+    ultra: 'Ultra Champion'
+  };
 
   readonly form: FormGroup<{
     mode: FormControl<GameMode>;
@@ -53,6 +60,7 @@ export class StartPageComponent {
     paletteSize: FormControl<5 | 7 | 10>;
     player1Name: FormControl<string>;
     player2Name: FormControl<string>;
+    cpuDifficulty: FormControl<CpuDifficulty>;
   }>;
 
   constructor(
@@ -68,6 +76,10 @@ export class StartPageComponent {
       }),
       paletteSize: this.fb.control<5 | 7 | 10>(5, { validators: Validators.required, nonNullable: true }),
       player1Name: this.fb.control('', { validators: [this.nameValidator(true)], nonNullable: true }),
+      cpuDifficulty: this.fb.control<CpuDifficulty>('standard', {
+        validators: Validators.required,
+        nonNullable: true
+      }),
       player2Name: this.fb.control({ value: '', disabled: true }, {
         validators: [this.nameValidator(false)],
         nonNullable: true
@@ -80,6 +92,10 @@ export class StartPageComponent {
 
   get isLocalMode(): boolean {
     return this.form.controls.mode.value === 'local';
+  }
+
+  get isCpuMode(): boolean {
+    return this.form.controls.mode.value === 'cpu';
   }
 
   get player1Control(): FormControl<string> {
@@ -102,7 +118,8 @@ export class StartPageComponent {
       mode: rawValue.mode,
       board: { cols: rawValue.boardPreset.cols, rows: rawValue.boardPreset.rows },
       paletteSize: rawValue.paletteSize,
-      players: this.buildPlayers(rawValue.mode, player1Name, player2Name)
+      players: this.buildPlayers(rawValue.mode, player1Name, player2Name),
+      cpuDifficulty: rawValue.cpuDifficulty
     };
 
     this.gameSession.setSettings(settings);
