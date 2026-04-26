@@ -1,4 +1,4 @@
-name: Build & Push Frontend
+name: Build & Push Images
 
 on:
   push:
@@ -21,8 +21,16 @@ jobs:
       - name: Set lowercase owner
         run: echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-      - name: Build image
+      # 🔹 Frontend
+      - name: Build frontend
         run: docker build -t ghcr.io/${{ env.OWNER }}/filler-frontend:latest .
 
-      - name: Push image
+      - name: Push frontend
         run: docker push ghcr.io/${{ env.OWNER }}/filler-frontend:latest
+
+      # 🔹 Backend
+      - name: Build backend
+        run: docker build -t ghcr.io/${{ env.OWNER }}/filler-backend:latest ./apps/server
+
+      - name: Push backend
+        run: docker push ghcr.io/${{ env.OWNER }}/filler-backend:latest
