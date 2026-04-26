@@ -30,7 +30,7 @@ jobs:
 
       # 🔹 Backend
       - name: Build backend
-        run: docker build -t ghcr.io/${{ env.OWNER }}/filler-backend:latest ./apps/server
+        run: docker build -f apps/server/Dockerfile -t ghcr.io/${{ env.OWNER }}/filler-backend:latest .
 
       - name: Push backend
         run: docker push ghcr.io/${{ env.OWNER }}/filler-backend:latest

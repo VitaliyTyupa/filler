@@ -1,0 +1,32 @@
+services:
+  filler-frontend:
+    image: ghcr.io/vitaliytyupa/filler-frontend:latest
+    restart: always
+    environment:
+      FILLER_WS_URL: ${FILLER_WS_URL}
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.filler.rule=Host(`filler.leo-lab.app`)"
+      - "traefik.http.routers.filler.entrypoints=web"
+      - "traefik.http.services.filler.loadbalancer.server.port=80"
+
+  filler-backend:
+    image: ghcr.io/vitaliytyupa/filler-backend:latest
+    restart: always
+    environment:
+      PORT: 3000
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.filler-api.rule=Host(`api.leo-lab.app`)"
+      - "traefik.http.routers.filler-api.entrypoints=web"
+      - "traefik.http.services.filler-api.loadbalancer.server.port=3000"
+
+networks:
+  web:
+    external: true

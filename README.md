@@ -1,59 +1,136 @@
 # Filler
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.0.6.
+Filler consists of:
 
-## Development server
+- Angular frontend served by `nginx`
+- Node.js WebSocket backend
+- Traefik-based production routing
 
-To start a local development server, run:
+## Production Readiness
 
-```bash
-ng serve
-```
+The main deployment blockers were removed:
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- Frontend WebSocket URL is now runtime-configurable through `env.js`
+- Backend Docker image now builds from the repository root, so local `packages/*` dependencies are available during image build
+- Backend production image is bundled into a single runnable `dist/main.js`, so Node does not depend on TypeScript path aliases at runtime
 
-## Code scaffolding
+Prepared deployment files:
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- `docker-compose.prod.yml`
+- `.env.prod.example`
+- `Dockerfile`
+- `apps/server/Dockerfile`
+- `.github/workflows/deploy.yml`
 
-```bash
-ng generate component component-name
-```
+## Local Development
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+Frontend:
 
 ```bash
-ng build
+npm ci
+npm start
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+Backend:
 
 ```bash
-ng test
+cd apps/server
+npm ci
+npm run dev
 ```
 
-## Running end-to-end tests
+Default local WebSocket URL is defined in `public/env.js`:
 
-For end-to-end (e2e) testing, run:
+```text
+ws://localhost:8080
+```
+
+## Production Prerequisites
+
+The production server must already have:
+
+- Docker Engine
+- Docker Compose plugin
+- Traefik running and attached to external Docker network `web`
+- DNS records:
+  - `filler.leo-lab.app`
+  - `api.leo-lab.app`
+- access to GHCR images `ghcr.io/vitaliytyupa/filler-frontend:latest`
+  and `ghcr.io/vitaliytyupa/filler-backend:latest`
+
+If GHCR packages are private, authenticate first:
 
 ```bash
-ng e2e
+echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Deployment Order
 
-## Additional Resources
+1. Copy deployment files to the server:
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+```bash
+scp docker-compose.prod.yml .env.prod.example user@server:/opt/filler/
+```
+
+2. Create the runtime env file:
+
+```bash
+cd /opt/filler
+cp .env.prod.example .env
+```
+
+3. Verify the frontend runtime WebSocket URL in `.env`:
+
+```bash
+FILLER_WS_URL=wss://api.leo-lab.app
+```
+
+4. Ensure Traefik external network exists:
+
+```bash
+docker network inspect web >/dev/null 2>&1 || docker network create web
+```
+
+5. Pull the latest images:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env pull
+```
+
+6. Start or update the stack:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env up -d
+```
+
+7. Check container state:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env ps
+```
+
+8. Verify application endpoints:
+
+- frontend: `https://filler.leo-lab.app`
+- backend websocket endpoint behind Traefik: `wss://api.leo-lab.app`
+
+## Update Procedure
+
+To deploy a newer version:
+
+```bash
+cd /opt/filler
+docker compose -f docker-compose.prod.yml --env-file .env pull
+docker compose -f docker-compose.prod.yml --env-file .env up -d
+```
+
+## Image Publishing
+
+GitHub Actions builds and pushes both images on every push to `main`.
+
+Important detail:
+
+- frontend image is built from repository root with `Dockerfile`
+- backend image is built from repository root with `apps/server/Dockerfile`
+
+This is required because the backend depends on source from `packages/game-core` and `packages/shared`.
