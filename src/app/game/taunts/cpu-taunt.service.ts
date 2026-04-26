@@ -2,7 +2,8 @@ import { DestroyRef, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CPU_TAUNTS, TauntTone } from './cpu-taunts';
-import { CpuTauntEvent, GameService } from '../../main/game-page/game.service';
+import { CpuTauntEvent } from './cpu-taunt.types';
+import { CpuTauntBusService } from './cpu-taunt-bus.service';
 
 @Injectable({ providedIn: 'root' })
 export class CpuTauntService {
@@ -13,11 +14,11 @@ export class CpuTauntService {
   private readonly cooldownMs = 6000;
 
   constructor(
-    private readonly gameService: GameService,
+    private readonly tauntBus: CpuTauntBusService,
     private readonly snackBar: MatSnackBar,
     destroyRef: DestroyRef
   ) {
-    this.gameService.cpuTaunts$
+    this.tauntBus.events$
       .pipe(takeUntilDestroyed(destroyRef))
       .subscribe((event) => this.enqueueTaunt(event));
   }

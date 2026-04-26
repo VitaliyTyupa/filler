@@ -4,6 +4,7 @@ export type GameMode = 'cpu' | 'local' | 'online';
 export type CpuDifficulty = 'standard' | 'master' | 'champion' | 'ultra';
 
 export type BoardPreset =
+  | { cols: 10; rows: 10 }
   | { cols: 25; rows: 20 }
   | { cols: 50; rows: 40 }
   | { cols: 80; rows: 70 }
@@ -24,12 +25,21 @@ export interface GameResult {
   score2: number;
 }
 
+export interface RealtimeSessionInfo {
+  sessionId: string;
+  started?: boolean;
+  role?: 'host' | 'guest';
+  hostName?: string;
+  guestName?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class GameSessionService {
   private settings?: GameSettings;
   private result?: GameResult;
+  private realtimeSession?: RealtimeSessionInfo;
 
   setSettings(settings: GameSettings): void {
     this.settings = settings;
@@ -55,8 +65,21 @@ export class GameSessionService {
     this.result = undefined;
   }
 
+  setRealtimeSession(session: RealtimeSessionInfo): void {
+    this.realtimeSession = session;
+  }
+
+  getRealtimeSession(): RealtimeSessionInfo | undefined {
+    return this.realtimeSession;
+  }
+
+  clearRealtimeSession(): void {
+    this.realtimeSession = undefined;
+  }
+
   clear(): void {
     this.settings = undefined;
     this.result = undefined;
+    this.realtimeSession = undefined;
   }
 }

@@ -1,23 +1,83 @@
 <div class="color-picker">
-  @for (user of users; track user.id) {
-    <mat-card appearance="outlined">
+  @if (sessionUiStore.selfPlayer(); as selfPlayer) {
+    <mat-card
+      appearance="outlined"
+      class="player-card self-card"
+      [class.active-card]="sessionUiStore.state().activePlayerId === selfPlayer.id && sessionUiStore.state().status === 'playing'"
+    >
       <mat-card-content>
-      <div class="user">
-        <div class="user-name"><u>{{ user.name }}:</u></div>
-        <div class="user-score"><u>{{ user.currentScore }}</u></div>
-      </div>
-      <div class="palette">
-        @for (color of palette; let colorIndex = $index; track colorIndex) {
-          <button
-            mat-mini-fab
-            type="button"
-            class="palette-color"
-            [style.background-color]="color"
-            [disabled]="isBusy || user.id !== activeUserId || !validMovesByUser[user.id][colorIndex]"
-            (click)="handleColorPick(user.id, colorIndex, color)"
-          ></button>
-        }
-      </div>
+        <div class="player-header">
+          <div>
+            <div class="player-name">Я {{ selfPlayer.name }}</div>
+            <div class="player-status">{{ selfPlayer.status === 'connected' ? 'Підключений' : 'Відключений' }}</div>
+          </div>
+          <div class="last-color-block">
+            <span class="meta-label">Останній колір</span>
+            <span
+              class="last-color-swatch"
+              [style.background-color]="selfPlayer.lastColorIndex !== null ? sessionUiStore.state().palette[selfPlayer.lastColorIndex] : 'transparent'"
+            ></span>
+          </div>
+        </div>
+
+        <div class="player-meta">
+          <div class="meta-item">
+            <span class="meta-label">Очки</span>
+            <span class="meta-value">{{ selfPlayer.score }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Ходи</span>
+            <span class="meta-value">{{ selfPlayer.moveCount }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Останній хід</span>
+            <span class="meta-value">{{ selfPlayer.lastMoveNumber ?? '-' }}</span>
+          </div>
+        </div>
+
+        <div class="palette">
+          @for (option of sessionUiStore.paletteOptions(); track option.index) {
+            <button
+              mat-mini-fab
+              type="button"
+              class="palette-color"
+              [style.background-color]="option.hex"
+              [disabled]="option.disabled"
+              (click)="handleColorPick(option.index, option.hex)"
+            ></button>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (sessionUiStore.opponentPlayer(); as opponentPlayer) {
+    <mat-card appearance="outlined" class="player-card opponent-card">
+      <mat-card-content>
+        <div class="player-header">
+          <div>
+            <div class="player-name">Проти {{ opponentPlayer.name }}</div>
+            <div class="player-status">{{ opponentPlayer.status === 'connected' ? 'Підключений' : 'Відключений' }}</div>
+          </div>
+          <div class="last-color-block">
+            <span class="meta-label">Останній колір</span>
+            <span
+              class="last-color-swatch"
+              [style.background-color]="opponentPlayer.lastColorIndex !== null ? sessionUiStore.state().palette[opponentPlayer.lastColorIndex] : 'transparent'"
+            ></span>
+          </div>
+        </div>
+
+        <div class="player-meta compact-meta">
+          <div class="meta-item">
+            <span class="meta-label">Очки</span>
+            <span class="meta-value">{{ opponentPlayer.score }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Ходи</span>
+            <span class="meta-value">{{ opponentPlayer.moveCount }}</span>
+          </div>
+        </div>
       </mat-card-content>
     </mat-card>
   }

@@ -16,6 +16,14 @@ export class FinalPageComponent implements OnInit {
   result?: GameResult;
   settings?: GameSettings;
 
+  get winnerName(): string | null {
+    if (!this.result || this.result.winner === 0) {
+      return null;
+    }
+
+    return this.getPlayerName(this.result.winner);
+  }
+
   constructor(
     private readonly gameSession: GameSessionService,
     private readonly router: Router
@@ -39,5 +47,27 @@ export class FinalPageComponent implements OnInit {
   newGame(): void {
     this.gameSession.clear();
     this.router.navigateByUrl('/start');
+  }
+
+  getPlayerName(playerId: 1 | 2): string {
+    const fallbackName = this.settings?.players.find((player) => player.id === playerId)?.name ?? `Player ${playerId}`;
+    if (this.settings?.mode !== 'online') {
+      return fallbackName;
+    }
+
+    const realtimeSession = this.gameSession.getRealtimeSession();
+    if (playerId === 1) {
+      return realtimeSession?.hostName ?? fallbackName;
+    }
+
+    return realtimeSession?.guestName ?? fallbackName;
+  }
+
+  getPlayerScore(playerId: 1 | 2): number {
+    if (!this.result) {
+      return 0;
+    }
+
+    return playerId === 1 ? this.result.score1 : this.result.score2;
   }
 }

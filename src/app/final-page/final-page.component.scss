@@ -4,11 +4,6 @@
   padding: 0 16px;
 }
 
-.subtitle {
-  margin: 0 0 12px;
-  color: rgba(0, 0, 0, 0.72);
-}
-
 .summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -32,11 +27,6 @@
 .score {
   font-size: 32px;
   margin: 6px 0 0;
-}
-
-.label {
-  margin: 0;
-  color: rgba(0, 0, 0, 0.6);
 }
 
 .actions {

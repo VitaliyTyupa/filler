@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { MatProgressBar } from '@angular/material/progress-bar';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { GameSessionService } from '../../game-session.service';
@@ -10,7 +9,6 @@ import { GameSessionService } from '../../game-session.service';
   selector: 'fil-nav-header',
     imports: [
         CommonModule,
-        MatProgressBar,
         MatToolbar,
         MatButtonModule
     ],

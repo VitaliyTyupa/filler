@@ -1,6 +1,7 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import {MatCard, MatCardContent} from '@angular/material/card';
+import { MatCard, MatCardContent } from '@angular/material/card';
+import { SessionUiStore } from '../../../game/session-ui.store';
 
 @Component({
   selector: 'fil-color-picker',
@@ -10,26 +11,17 @@ import {MatCard, MatCardContent} from '@angular/material/card';
   styleUrl: './color-picker.component.scss'
 })
 export class ColorPickerComponent {
-  @Input({ required: true })
-  users: Array<{ id: number; name: string; currentScore: number }> = [];
-
-  @Input({ required: true })
-  palette: string[] = [];
-
-  @Input({ required: true })
-  activeUserId!: number;
-
-  @Input({ required: true })
-  validMovesByUser!: Record<number, boolean[]>;
-
-  @Input()
-  isBusy = false;
-
   @Output()
   readonly colorPick = new EventEmitter<{ userId: number; colorIndex: number; colorHex: string }>();
 
-  handleColorPick(userId: number, colorIndex: number, colorHex: string): void {
-    this.colorPick.emit({ userId, colorIndex, colorHex });
-  }
+  constructor(readonly sessionUiStore: SessionUiStore) {}
 
+  handleColorPick(colorIndex: number, colorHex: string): void {
+    const self = this.sessionUiStore.selfPlayer();
+    if (!self) {
+      return;
+    }
+
+    this.colorPick.emit({ userId: self.id, colorIndex, colorHex });
+  }
 }

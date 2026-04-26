@@ -3,29 +3,23 @@
     <mat-card appearance="outlined">
       <mat-card-header>
         <mat-card-title>
-          @if (result.winner === 1) {
-            🎉 Переміг Player 1
-          } @else if (result.winner === 2) {
-            🎉 Переміг Player 2
+          @if (winnerName) {
+            Переміг {{ winnerName }}
           } @else {
-            🤝 Нічия
+            Нічия
           }
         </mat-card-title>
-        <mat-card-subtitle>Рахунок: {{ result.score1 }} : {{ result.score2 }}</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
-        <p class="subtitle">Поле: {{ settings.board.cols }}×{{ settings.board.rows }} • Режим: {{ settings.mode | titlecase }}</p>
         <div class="summary">
           <div class="score-card" [class.winner]="result.winner === 1">
-            <p class="label">Player 1</p>
-            <h2>{{ settings.players[0].name }}</h2>
-            <p class="score">{{ result.score1 }}</p>
+            <h2>{{ getPlayerName(1) }}</h2>
+            <p class="score">{{ getPlayerScore(1) }}</p>
           </div>
           <div class="score-card" [class.winner]="result.winner === 2">
-            <p class="label">Player 2</p>
-            <h2>{{ settings.players[1].name }}</h2>
-            <p class="score">{{ result.score2 }}</p>
+            <h2>{{ getPlayerName(2) }}</h2>
+            <p class="score">{{ getPlayerScore(2) }}</p>
           </div>
         </div>
       </mat-card-content>

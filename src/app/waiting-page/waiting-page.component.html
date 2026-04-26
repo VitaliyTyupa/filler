@@ -31,10 +31,27 @@
                 </div>
               } @else {
                 <div class="connected">
-                  <p class="status-text">Player 2: <strong>{{ player2Name }}</strong></p>
+                  <p class="status-text">Lobby code: <strong>{{ lobbyCode }}</strong></p>
+                  <p class="status-text">Host: <strong>{{ gameSession.getRealtimeSession()?.hostName ?? config.players[0].name }}</strong></p>
+                  <p class="status-text">Guest: <strong>{{ gameSession.getRealtimeSession()?.guestName ?? 'Очікується...' }}</strong></p>
+                  <p class="status-text">Connected: host={{ hostConnected ? 'yes' : 'no' }}, guest={{ guestConnected ? 'yes' : 'no' }}</p>
+                  <p class="status-text">Ready: {{ isReady ? 'yes' : 'no' }}</p>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Join by code</mat-label>
+                    <input matInput [(ngModel)]="joinCode" placeholder="Встав код лобі">
+                  </mat-form-field>
+                  @if (errorMessage) {
+                    <p class="error">{{ errorMessage }}</p>
+                  }
                   <div class="actions">
+                    <button mat-stroked-button type="button" (click)="onToggleReady()">
+                      {{ isReady ? 'Not Ready' : 'Ready' }}
+                    </button>
+                    <button mat-stroked-button type="button" [disabled]="isJoining" (click)="onJoinByCode()">
+                      Підключитись
+                    </button>
                     <button mat-stroked-button type="button" (click)="onReject()">Відхилити</button>
-                    <button mat-raised-button color="primary" type="button" (click)="onStartGame()">
+                    <button mat-raised-button color="primary" type="button" [disabled]="!canStart" (click)="onStartGame()">
                       Почати гру
                     </button>
                   </div>
@@ -45,8 +62,8 @@
         </mat-tab>
         <mat-tab label="Info">
           <div class="info">
-            <p>Online режим знаходиться в розробці.</p>
-            <p>Поточна реалізація — mock для UI.</p>
+            <p>Online режим використовує WS game session.</p>
+            <p>Поділись Lobby code з іншим клієнтом для join.</p>
           </div>
         </mat-tab>
       </mat-tab-group>

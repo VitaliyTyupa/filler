@@ -122,6 +122,7 @@ export class StartPageComponent {
       cpuDifficulty: rawValue.cpuDifficulty
     };
 
+    this.gameSession.clearRealtimeSession();
     this.gameSession.setSettings(settings);
 
     const targetRoute = rawValue.mode === 'online' ? '/waiting' : '/game';

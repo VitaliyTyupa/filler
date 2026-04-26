@@ -4,7 +4,11 @@ import { DEFAULT_PALETTE_10, getPalette } from '../../game.constants';
 import { GameSessionService, GameSettings } from '../../game-session.service';
 import { ColorPickerComponent } from './color-picker/color-picker.component';
 import { GameGrid } from './game-grid';
-import { GameService, GameState, PlayerId } from './game.service';
+import { GameDiff, GameState, PlayerId } from '@game-core';
+import { GameRealtimeService, RealtimeCreateGameResult } from '../../game/realtime/game-realtime.service';
+import { Subscription } from 'rxjs';
+import { GameSessionFacade } from '../../game/game-session.facade';
+import { SessionUiStore } from '../../game/session-ui.store';
 
 @Component({
   selector: 'fil-game-page',
@@ -24,18 +28,20 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private grid?: GameGrid;
   private settings?: GameSettings;
-  private baseUsers: Array<{ id: number; name: string; isCpu: boolean }> = [];
+  private sessionId?: string;
+  private viewReady = false;
+  private remoteMoveSubscription?: Subscription;
 
-  users: Array<{ id: number; name: string; currentScore: number; isCpu: boolean }> = [];
   palette: string[] = [];
   state?: GameState;
-  validMovesByUser: Record<number, boolean[]> = {};
   isCpuMode = false;
   cpuPlayerId?: PlayerId;
-  isBusy = false;
+  localOnlinePlayerId?: PlayerId;
 
   constructor(
-    private readonly gameService: GameService,
+    private readonly realtimeService: GameRealtimeService,
+    private readonly sessionFacade: GameSessionFacade,
+    readonly sessionUiStore: SessionUiStore,
     private readonly gameSession: GameSessionService,
     private readonly router: Router
   ) {}
@@ -55,31 +61,191 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.palette = getPalette(paletteSize);
 
-    this.baseUsers = players.map((player) => ({
-      id: player.id,
-      name: player.name,
-      isCpu: player.isCpu ?? false
-    }));
+    if (mode === 'online') {
+      this.remoteMoveSubscription = this.realtimeService.remoteMove$.subscribe((event) => {
+        if (!this.sessionId || event.sessionId !== this.sessionId) {
+          return;
+        }
 
-    this.state = this.gameService.generateInitialState({
-      cols: board.cols,
-      rows: board.rows,
-      paletteSize: this.palette.length,
-      cpuPlayerId: this.cpuPlayerId,
-      cpuDifficulty: this.settings.cpuDifficulty
-    });
+        for (const diff of event.diffs) {
+          this.applyGridDiff(diff);
+        }
 
-    this.updateUsersWithScore();
-    this.updateValidMoves();
+        this.state = event.state;
+
+        if (event.gameOver && event.winner) {
+          this.gameSession.setResult(event.winner);
+          void this.router.navigateByUrl('/final');
+        }
+      });
+    }
+
+    void this.startSession();
   }
 
   ngAfterViewInit(): void {
-    if (!this.boardContainer || !this.boardCanvas || !this.state) {
+    this.viewReady = true;
+    this.tryInitGrid();
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('resize', this.handleResize);
+    this.grid?.dispose();
+    this.remoteMoveSubscription?.unsubscribe();
+  }
+
+  private async startSession(): Promise<void> {
+    if (!this.settings) {
+      return;
+    }
+
+    try {
+      let created: RealtimeCreateGameResult | null;
+
+      if (this.settings.mode === 'online') {
+        const existing = this.gameSession.getRealtimeSession();
+        if (!existing) {
+          this.router.navigateByUrl('/waiting');
+          return;
+        }
+        if (!existing.started) {
+          this.router.navigateByUrl('/waiting');
+          return;
+        }
+        if (existing.role !== 'host' && existing.role !== 'guest') {
+          this.router.navigateByUrl('/waiting');
+          return;
+        }
+        this.localOnlinePlayerId = existing.role === 'guest' ? 2 : 1;
+        const cached = this.realtimeService.getState(existing.sessionId);
+        if (cached) {
+          created = {
+            sessionId: existing.sessionId,
+            state: cached,
+            hostName: existing.hostName ?? 'Player 1',
+            guestName: existing.guestName
+          };
+        } else {
+          created = await this.realtimeService.joinGame(
+            existing.sessionId,
+            this.settings.players.find((player) => player.id === 1)?.name
+          );
+          if (created) {
+            this.gameSession.setRealtimeSession({
+              ...existing,
+              sessionId: created.sessionId,
+              hostName: created.hostName,
+              guestName: created.guestName
+            });
+          }
+        }
+      } else {
+        created = await this.realtimeService.createGame({
+          cols: this.settings.board.cols,
+          rows: this.settings.board.rows,
+          paletteSize: this.palette.length,
+          seed: Date.now() >>> 0,
+          mode: this.settings.mode,
+          cpuPlayerId: this.cpuPlayerId,
+          cpuDifficulty: this.settings.cpuDifficulty
+        });
+        this.gameSession.setRealtimeSession({ sessionId: created.sessionId });
+      }
+
+      if (!created) {
+        this.router.navigateByUrl('/waiting');
+        return;
+      }
+
+      this.sessionId = created.sessionId;
+      this.state = created.state;
+      const playerNames = this.resolvePlayerNames(created.hostName, created.guestName);
+      this.sessionFacade.initializeUiSession({
+        sessionId: created.sessionId,
+        settings: this.settings,
+        palette: this.palette,
+        state: created.state,
+        ownPlayerId: this.localOnlinePlayerId ?? null,
+        playerNames
+      });
+      this.sessionFacade.setPlayerNames(created.sessionId, playerNames ?? {
+        1: created.hostName,
+        2: created.guestName ?? 'Player 2'
+      });
+      this.tryInitGrid();
+    } catch {
+      if (this.sessionId) {
+        this.sessionFacade.markInterrupted(this.sessionId);
+      }
+      this.router.navigateByUrl('/waiting');
+    }
+  }
+
+  private handleResize = (): void => {
+    if (!this.boardContainer || !this.grid) {
       return;
     }
 
     const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
+    this.grid.updateLayout(clientWidth, clientHeight);
+  };
 
+  async onColorPick(event: { userId: number; colorIndex: number; colorHex: string }): Promise<void> {
+    if (!this.state || !this.sessionId || this.sessionUiStore.state().busy) {
+      return;
+    }
+
+    if (this.settings?.mode === 'online') {
+      const ownId = this.localOnlinePlayerId;
+      if (!ownId || event.userId !== ownId || this.state.currentPlayer !== ownId) {
+        return;
+      }
+    }
+
+    try {
+      const result = await this.sessionFacade.submitMove(this.sessionId, {
+        playerId: event.userId as PlayerId,
+        colorIndex: event.colorIndex,
+        expectedTurn: this.state.turn
+      });
+
+      if (!result || !result.diffs.length) {
+        return;
+      }
+
+      for (const diff of result.diffs) {
+        this.applyGridDiff(diff);
+      }
+
+      this.state = result.state;
+
+      if (result.gameOver && result.winner) {
+        this.gameSession.setResult(result.winner);
+        this.router.navigateByUrl('/final');
+      }
+    } catch {
+      this.sessionFacade.markInterrupted(this.sessionId);
+    }
+  }
+
+  private applyGridDiff(diff: GameDiff): void {
+    if (!this.grid) {
+      return;
+    }
+
+    this.grid.applyDiff({
+      indices: diff.changedCells,
+      owner: diff.owner,
+      color: diff.color
+    });
+  }
+
+  private tryInitGrid(): void {
+    if (!this.viewReady || !this.boardContainer || !this.boardCanvas || !this.state || this.grid) {
+      return;
+    }
+
+    const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
     this.grid = new GameGrid({
       canvas: this.boardCanvas.nativeElement,
       width: clientWidth,
@@ -94,111 +260,32 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     window.addEventListener('resize', this.handleResize);
   }
 
-  ngOnDestroy(): void {
-    window.removeEventListener('resize', this.handleResize);
-    this.grid?.dispose();
-  }
-
-  private handleResize = (): void => {
-    if (!this.boardContainer || !this.grid) {
-      return;
+  private resolvePlayerNames(hostName?: string, guestName?: string): Record<PlayerId, string> | undefined {
+    if (this.settings?.mode !== 'online') {
+      return undefined;
     }
 
-    const { clientWidth, clientHeight } = this.boardContainer.nativeElement;
-    this.grid.updateLayout(clientWidth, clientHeight);
-  };
+    const session = this.gameSession.getRealtimeSession();
+    const localName = this.settings.players.find((player) => player.id === 1)?.name ?? 'Player 1';
+    const role = session?.role;
+    const resolvedHostName = hostName && hostName !== 'Player 1'
+      ? hostName
+      : session?.hostName && session.hostName !== 'Player 1'
+        ? session.hostName
+      : role === 'host'
+        ? localName
+        : 'Player 1';
+    const resolvedGuestName = guestName && guestName !== 'Player 2'
+      ? guestName
+      : session?.guestName && session.guestName !== 'Player 2'
+        ? session.guestName
+      : role === 'guest'
+        ? localName
+        : 'Player 2';
 
-  onColorPick(event: { userId: number; colorIndex: number; colorHex: string }): void {
-    if (!this.state || this.isBusy) {
-      return;
-    }
-
-    this.applyMoveAndUpdate(event.userId as PlayerId, event.colorIndex);
-
-    if (this.afterMoveCheck()) {
-      this.isBusy = false;
-      return;
-    }
-
-    if (this.isCpuMode && this.state.currentPlayer === this.cpuPlayerId && this.cpuPlayerId) {
-      this.isBusy = true;
-      setTimeout(() => {
-        if (!this.state || !this.cpuPlayerId) {
-          this.isBusy = false;
-          return;
-        }
-
-        const cpuColor = this.gameService.pickCpuMove();
-        this.applyMoveAndUpdate(this.cpuPlayerId, cpuColor);
-
-        if (this.afterMoveCheck()) {
-          this.isBusy = false;
-          return;
-        }
-
-        this.isBusy = false;
-      }, 1000);
-    }
-  }
-
-  private updateValidMoves(): void {
-    if (!this.state) {
-      return;
-    }
-
-    const mapping: Record<number, boolean[]> = {};
-
-    this.users.forEach((user) => {
-      mapping[user.id] = this.gameService.getValidMoves(this.state as GameState, user.id as PlayerId);
-    });
-
-    this.validMovesByUser = mapping;
-  }
-
-  private updateUsersWithScore(): void {
-    if (!this.state) {
-      return;
-    }
-
-    this.users = this.baseUsers.map((user) => ({
-      ...user,
-      currentScore: this.state?.score?.[user.id] ?? 0
-    }));
-  }
-
-  private applyMoveAndUpdate(playerId: PlayerId, colorIndex: number): void {
-    if (!this.state) {
-      return;
-    }
-
-    const result = this.gameService.applyMove(this.state, playerId, colorIndex);
-    this.state = result.state;
-    this.updateUsersWithScore();
-    this.updateValidMoves();
-
-    console.log('scores', this.state.score[1], this.state.score[2]);
-
-    if (this.grid) {
-      if (result.diffs.length) {
-        result.diffs.forEach((diff) => this.grid?.applyDiff(diff));
-      } else {
-        this.grid.setGridData({ owner: this.state.owner, color: this.state.color });
-      }
-    }
-  }
-
-  private afterMoveCheck(): boolean {
-    if (!this.state) {
-      return false;
-    }
-
-    if (this.gameService.isGameOver(this.state)) {
-      const result = this.gameService.getWinner(this.state);
-      this.gameSession.setResult(result);
-      this.router.navigateByUrl('/final');
-      return true;
-    }
-
-    return false;
+    return {
+      1: resolvedHostName,
+      2: resolvedGuestName
+    };
   }
 }
