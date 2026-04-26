@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Router } from '@angular/router';
+import { GameState } from '@game-core';
 import { GameSessionService, GameSettings } from '../game-session.service';
 import { GameRealtimeService } from '../game/realtime/game-realtime.service';
 
@@ -39,6 +40,7 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
   lobbyCode = '';
   joinCode = '';
   errorMessage = '';
+  usesOpponentSettings = false;
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -65,6 +67,7 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
     }
 
     this.settings = currentSettings;
+    this.usesOpponentSettings = this.gameSession.getRealtimeSession()?.role === 'guest';
     this.subscriptions.push(
       this.realtimeService.lobbyState$.subscribe((state) => {
         if (state.sessionId !== this.lobbyCode) {
@@ -154,6 +157,8 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
         hostName: joined.hostName,
         guestName: joined.guestName
       });
+      this.applyAuthoritativeOnlineSettings(joined.state, joined.hostName, joined.guestName);
+      this.usesOpponentSettings = true;
       this.isWaiting = false;
       this.isReady = false;
       this.realtimeService.setReady(this.lobbyCode, false);
@@ -178,6 +183,7 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
         hostName: existing.hostName,
         guestName: existing.guestName
       });
+      this.usesOpponentSettings = existing.role === 'guest';
       this.isWaiting = false;
       return;
     }
@@ -204,6 +210,8 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
         hostName: created.hostName,
         guestName: created.guestName
       });
+      this.applyAuthoritativeOnlineSettings(created.state, created.hostName, created.guestName);
+      this.usesOpponentSettings = false;
       this.isWaiting = false;
       this.isReady = false;
       this.realtimeService.setReady(this.lobbyCode, false);
@@ -211,6 +219,43 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       this.errorMessage = error instanceof Error ? error.message : 'Не вдалося створити lobby';
       this.isWaiting = false;
     }
+  }
+
+  private applyAuthoritativeOnlineSettings(state: GameState, hostName?: string, guestName?: string): void {
+    const currentSettings = this.gameSession.getSettings();
+    if (!currentSettings) {
+      return;
+    }
+
+    const authoritativeSettings: GameSettings = {
+      ...currentSettings,
+      mode: 'online',
+      board: {
+        cols: state.cols,
+        rows: state.rows
+      },
+      paletteSize: this.normalizePaletteSize(state.paletteSize),
+      players: [
+        {
+          id: 1,
+          name: hostName?.trim() || currentSettings.players.find((player) => player.id === 1)?.name || 'Player 1'
+        },
+        {
+          id: 2,
+          name: guestName?.trim() || currentSettings.players[1]?.name || currentSettings.players[0]?.name || 'Player 2'
+        }
+      ]
+    };
+
+    this.gameSession.setSettings(authoritativeSettings);
+    this.settings = authoritativeSettings;
+  }
+
+  private normalizePaletteSize(size: number): 5 | 7 | 10 {
+    if (size === 7 || size === 10) {
+      return size;
+    }
+    return 5;
   }
 
 }

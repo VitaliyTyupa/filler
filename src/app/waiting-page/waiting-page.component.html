@@ -23,6 +23,12 @@
               </div>
             </div>
 
+            @if (usesOpponentSettings) {
+              <p class="settings-notice">
+                Гра буде за налаштуваннями суперника: поле {{ config.board.cols }}×{{ config.board.rows }}, палітра на {{ config.paletteSize }} кольорів.
+              </p>
+            }
+
             <div class="status">
               @if (isWaiting) {
                 <div class="spinner">

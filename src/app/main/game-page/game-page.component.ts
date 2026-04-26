@@ -157,6 +157,10 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
+      if (this.settings.mode === 'online') {
+        this.applyAuthoritativeOnlineSettings(created.state, created.hostName, created.guestName);
+      }
+
       this.sessionId = created.sessionId;
       this.state = created.state;
       const playerNames = this.resolvePlayerNames(created.hostName, created.guestName);
@@ -260,14 +264,56 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     window.addEventListener('resize', this.handleResize);
   }
 
+  private applyAuthoritativeOnlineSettings(state: GameState, hostName?: string, guestName?: string): void {
+    if (!this.settings || this.settings.mode !== 'online') {
+      return;
+    }
+
+    const session = this.gameSession.getRealtimeSession();
+    const hostFallback = this.settings.players.find((player) => player.id === 1)?.name ?? 'Player 1';
+    const guestFallback = session?.role === 'guest'
+      ? this.settings.players.find((player) => player.id === 2)?.name
+        ?? this.settings.players.find((player) => player.id === 1)?.name
+        ?? 'Player 2'
+      : this.settings.players.find((player) => player.id === 2)?.name ?? 'Player 2';
+
+    this.settings = {
+      ...this.settings,
+      board: {
+        cols: state.cols,
+        rows: state.rows
+      },
+      paletteSize: this.normalizePaletteSize(state.paletteSize),
+      players: [
+        {
+          id: 1,
+          name: hostName?.trim() || session?.hostName || hostFallback
+        },
+        {
+          id: 2,
+          name: guestName?.trim() || session?.guestName || guestFallback
+        }
+      ]
+    };
+
+    this.gameSession.setSettings(this.settings);
+    this.palette = getPalette(this.settings.paletteSize);
+  }
+
   private resolvePlayerNames(hostName?: string, guestName?: string): Record<PlayerId, string> | undefined {
     if (this.settings?.mode !== 'online') {
       return undefined;
     }
 
     const session = this.gameSession.getRealtimeSession();
-    const localName = this.settings.players.find((player) => player.id === 1)?.name ?? 'Player 1';
     const role = session?.role;
+    const localName = role === 'guest'
+      ? this.settings.players.find((player) => player.id === 2)?.name
+        ?? session?.guestName
+        ?? 'Player 2'
+      : this.settings.players.find((player) => player.id === 1)?.name
+        ?? session?.hostName
+        ?? 'Player 1';
     const resolvedHostName = hostName && hostName !== 'Player 1'
       ? hostName
       : session?.hostName && session.hostName !== 'Player 1'
@@ -287,5 +333,12 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       1: resolvedHostName,
       2: resolvedGuestName
     };
+  }
+
+  private normalizePaletteSize(size: number): 5 | 7 | 10 {
+    if (size === 7 || size === 10) {
+      return size;
+    }
+    return 5;
   }
 }
