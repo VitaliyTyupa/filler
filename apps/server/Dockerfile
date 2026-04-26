@@ -13,10 +13,10 @@ RUN npm ci
 RUN npx esbuild src/main.ts \
   --bundle \
   --platform=node \
-  --format=esm \
+  --format=cjs \
   --target=node20 \
   --tsconfig=tsconfig.json \
-  --outfile=dist/main.js
+  --outfile=dist/main.cjs
 
 FROM node:20-alpine
 
@@ -26,4 +26,4 @@ COPY --from=build /app/apps/server/dist ./dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/main.cjs"]
