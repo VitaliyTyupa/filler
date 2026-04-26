@@ -91,8 +91,8 @@ export class GameRealtimeService {
   ) {}
 
   async createGame(input: RealtimeCreateGameInput): Promise<RealtimeCreateGameResult> {
-    const useWs = !!this.wsUrl && input.mode === 'online';
-    if (useWs) {
+    if (input.mode === 'online') {
+      this.requireWsUrl();
       const ws = await this.getWsClient();
       const created = await ws.createGame(input);
       this.sessions.set(created.sessionId, created.state);
@@ -124,32 +124,20 @@ export class GameRealtimeService {
   }
 
   async joinGame(sessionId: string, playerName?: string): Promise<RealtimeCreateGameResult | null> {
-    if (this.wsUrl) {
-      const ws = await this.getWsClient();
-      const joined = await ws.joinGame(sessionId, playerName);
-      this.sessions.set(joined.sessionId, joined.state);
-      this.sessionTransport.set(joined.sessionId, 'ws');
-      if (!this.tauntMeta.has(joined.sessionId)) {
-        this.tauntMeta.set(joined.sessionId, {
-          gameSeed: Date.now() >>> 0,
-          moveNumber: joined.state.turn,
-          milestonesFired: 0,
-          endTauntFired: false
-        });
-      }
-      return joined;
+    this.requireWsUrl();
+    const ws = await this.getWsClient();
+    const joined = await ws.joinGame(sessionId, playerName);
+    this.sessions.set(joined.sessionId, joined.state);
+    this.sessionTransport.set(joined.sessionId, 'ws');
+    if (!this.tauntMeta.has(joined.sessionId)) {
+      this.tauntMeta.set(joined.sessionId, {
+        gameSeed: Date.now() >>> 0,
+        moveNumber: joined.state.turn,
+        milestonesFired: 0,
+        endTauntFired: false
+      });
     }
-
-    const state = this.sessions.get(sessionId);
-    if (!state) {
-      return null;
-    }
-    return {
-      sessionId,
-      state,
-      hostName: 'Player 1',
-      guestName: 'Player 2'
-    };
+    return joined;
   }
 
   async submitMove(sessionId: string, move: MoveInput): Promise<RealtimeMoveResult | null> {
@@ -254,12 +242,18 @@ export class GameRealtimeService {
     return `session_${Date.now()}_${Math.floor(Math.random() * 1_000_000)}`;
   }
 
-  private async getWsClient(): Promise<WsGameClient> {
-    if (!this.wsUrl) {
+  private requireWsUrl(): string {
+    const wsUrl = this.wsUrl?.trim();
+    if (!wsUrl) {
       throw new Error('WS URL is not configured');
     }
+    return wsUrl;
+  }
+
+  private async getWsClient(): Promise<WsGameClient> {
+    const wsUrl = this.requireWsUrl();
     if (!this.wsClient) {
-      this.wsClient = new WsGameClient(this.wsUrl);
+      this.wsClient = new WsGameClient(wsUrl);
       this.wsClient.onClosed(() => {
         for (const [sessionId, transport] of this.sessionTransport.entries()) {
           if (transport === 'ws') {

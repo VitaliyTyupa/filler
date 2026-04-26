@@ -157,9 +157,9 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       this.isWaiting = false;
       this.isReady = false;
       this.realtimeService.setReady(this.lobbyCode, false);
-    } catch {
+    } catch (error) {
       this.isJoining = false;
-      this.errorMessage = 'Не вдалося підключитись до lobby';
+      this.errorMessage = error instanceof Error ? error.message : 'Не вдалося підключитись до lobby';
     }
   }
 
@@ -207,8 +207,8 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       this.isWaiting = false;
       this.isReady = false;
       this.realtimeService.setReady(this.lobbyCode, false);
-    } catch {
-      this.errorMessage = 'Не вдалося створити lobby';
+    } catch (error) {
+      this.errorMessage = error instanceof Error ? error.message : 'Не вдалося створити lobby';
       this.isWaiting = false;
     }
   }
