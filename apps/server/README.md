@@ -29,6 +29,8 @@ Local MongoDB for development:
 - `POST /auth/register` -> register and return JWT token.
 - `POST /auth/login` -> login and return JWT token.
 - `GET /auth/me` -> return current user (`Authorization: Bearer <token>`).
+- `POST /stats/games` -> save game activity/statistics for current user.
+- `GET /stats/me` -> aggregated user statistics and recent games.
 - WebSocket endpoint: `/ws`.
 
 ## Gameplay flow

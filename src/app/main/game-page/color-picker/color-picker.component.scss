@@ -108,4 +108,21 @@
   .player-meta {
     grid-template-columns: 1fr 1fr;
   }
+
+  .opponent-card {
+    display: none;
+  }
+
+  .self-card .player-header,
+  .self-card .player-meta {
+    display: none;
+  }
+
+  .self-card mat-card-content {
+    padding: 8px;
+  }
+
+  .self-card .palette {
+    justify-content: center;
+  }
 }

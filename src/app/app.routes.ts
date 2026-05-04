@@ -6,12 +6,14 @@ import { FinalPageComponent } from './final-page/final-page.component';
 import { LoginPageComponent } from './auth/login-page/login-page.component';
 import { RegisterPageComponent } from './auth/register-page/register-page.component';
 import { anonymousOnlyGuard, authRequiredGuard } from './auth/auth.guards';
+import { ProfilePageComponent } from './profile/profile-page.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/start', pathMatch: 'full' },
   { path: 'login', component: LoginPageComponent, canActivate: [anonymousOnlyGuard] },
   { path: 'register', component: RegisterPageComponent, canActivate: [anonymousOnlyGuard] },
   { path: 'start', component: StartPageComponent, canActivate: [authRequiredGuard] },
+  { path: 'profile', component: ProfilePageComponent, canActivate: [authRequiredGuard] },
   { path: 'game', component: GamePageComponent, canActivate: [authRequiredGuard] },
   { path: 'waiting', component: WaitingPageComponent, canActivate: [authRequiredGuard] },
   { path: 'final', component: FinalPageComponent, canActivate: [authRequiredGuard] }

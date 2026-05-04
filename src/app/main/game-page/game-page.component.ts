@@ -135,7 +135,8 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
               ...existing,
               sessionId: created.sessionId,
               hostName: created.hostName,
-              guestName: created.guestName
+              guestName: created.guestName,
+              startedAt: existing.startedAt ?? new Date().toISOString()
             });
           }
         }
@@ -149,7 +150,10 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
           cpuPlayerId: this.cpuPlayerId,
           cpuDifficulty: this.settings.cpuDifficulty
         });
-        this.gameSession.setRealtimeSession({ sessionId: created.sessionId });
+        this.gameSession.setRealtimeSession({
+          sessionId: created.sessionId,
+          startedAt: new Date().toISOString()
+        });
       }
 
       if (!created) {
@@ -159,6 +163,13 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (this.settings.mode === 'online') {
         this.applyAuthoritativeOnlineSettings(created.state, created.hostName, created.guestName);
+        const currentSession = this.gameSession.getRealtimeSession();
+        if (currentSession && !currentSession.startedAt) {
+          this.gameSession.setRealtimeSession({
+            ...currentSession,
+            startedAt: new Date().toISOString()
+          });
+        }
       }
 
       this.sessionId = created.sessionId;
@@ -233,14 +244,34 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private applyGridDiff(diff: GameDiff): void {
-    if (!this.grid) {
+    if (!this.grid || !this.state) {
       return;
+    }
+
+    const animFromColor = new Uint8Array(diff.changedCells.length);
+    const animToColor = new Uint8Array(diff.changedCells.length);
+    const animDelay01 = new Float32Array(diff.changedCells.length);
+    const animMoveId = new Uint32Array(diff.changedCells.length);
+    const maxDistance = Math.max(1, (this.state.cols - 1) + (this.state.rows - 1));
+
+    for (let i = 0; i < diff.changedCells.length; i += 1) {
+      const cellIndex = diff.changedCells[i];
+      const row = Math.floor(cellIndex / this.state.cols);
+      const col = cellIndex - row * this.state.cols;
+      animFromColor[i] = this.state.color[cellIndex];
+      animToColor[i] = diff.color[i];
+      animDelay01[i] = (row + col) / maxDistance;
+      animMoveId[i] = diff.turn;
     }
 
     this.grid.applyDiff({
       indices: diff.changedCells,
       owner: diff.owner,
-      color: diff.color
+      color: diff.color,
+      animFromColor,
+      animToColor,
+      animDelay01,
+      animMoveId
     });
   }
 

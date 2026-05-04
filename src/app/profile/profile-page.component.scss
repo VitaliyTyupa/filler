@@ -1,0 +1,97 @@
+.profile-page {
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+  box-sizing: border-box;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+mat-card {
+  max-width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.stat-item {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+}
+
+.label {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.leaderboard-card h2 {
+  margin-top: 0;
+}
+
+.leaderboard-head,
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 90px 100px 90px;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.leaderboard-head {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.leaderboard-row {
+  padding: 0.45rem 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 768px) {
+  .profile-page {
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  mat-card {
+    padding: 0.75rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .leaderboard-head,
+  .leaderboard-row {
+    grid-template-columns: 40px minmax(0, 1fr) 54px 62px 54px;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+  }
+
+  .leaderboard-head {
+    font-size: 0.8rem;
+  }
+
+  .leaderboard-head span,
+  .leaderboard-row span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

@@ -9,7 +9,7 @@
   <ng-container *ngIf="user$ | async as user; else loginAction">
     <div class="auth-actions">
       <span class="username">{{ user.username }}</span>
-      <button class="avatar" mat-icon-button type="button" aria-hidden="true">
+      <button class="avatar" mat-icon-button type="button" (click)="openProfile()" aria-label="Профіль">
         <mat-icon>account_circle</mat-icon>
       </button>
       <button mat-icon-button type="button" (click)="logout()" aria-label="Вийти">

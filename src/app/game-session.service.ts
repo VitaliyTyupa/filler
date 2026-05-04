@@ -31,6 +31,7 @@ export interface RealtimeSessionInfo {
   role?: 'host' | 'guest';
   hostName?: string;
   guestName?: string;
+  startedAt?: string;
 }
 
 @Injectable({
@@ -40,6 +41,7 @@ export class GameSessionService {
   private settings?: GameSettings;
   private result?: GameResult;
   private realtimeSession?: RealtimeSessionInfo;
+  private statsRecorded = false;
 
   setSettings(settings: GameSettings): void {
     this.settings = settings;
@@ -63,6 +65,7 @@ export class GameSessionService {
 
   clearResult(): void {
     this.result = undefined;
+    this.statsRecorded = false;
   }
 
   setRealtimeSession(session: RealtimeSessionInfo): void {
@@ -75,11 +78,21 @@ export class GameSessionService {
 
   clearRealtimeSession(): void {
     this.realtimeSession = undefined;
+    this.statsRecorded = false;
+  }
+
+  markStatsRecorded(): void {
+    this.statsRecorded = true;
+  }
+
+  isStatsRecorded(): boolean {
+    return this.statsRecorded;
   }
 
   clear(): void {
     this.settings = undefined;
     this.result = undefined;
     this.realtimeSession = undefined;
+    this.statsRecorded = false;
   }
 }

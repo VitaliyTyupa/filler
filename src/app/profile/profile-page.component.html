@@ -1,0 +1,41 @@
+<section class="profile-page" *ngIf="stats as data">
+  <mat-card>
+    <h1>{{ data.user.username }}</h1>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <span class="label">Ігор зіграно</span>
+        <span class="value">{{ data.summary.gamesPlayed }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="label">Перемог</span>
+        <span class="value">{{ data.summary.wins }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="label">Загалом очок виграно</span>
+        <span class="value">{{ data.summary.totalPointsWon }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="label">Найбільше за гру</span>
+        <span class="value">{{ data.summary.bestSingleGamePoints }}</span>
+      </div>
+    </div>
+  </mat-card>
+
+  <mat-card class="leaderboard-card">
+    <h2>Рейтинг гравців (ТОП 5)</h2>
+    <div class="leaderboard-head">
+      <span>Місце</span>
+      <span>Ім'я</span>
+      <span>Ігор</span>
+      <span>Перемог</span>
+      <span>Очки</span>
+    </div>
+    <div class="leaderboard-row" *ngFor="let player of data.leaderboard">
+      <span>{{ player.place }}</span>
+      <span>{{ player.username }}</span>
+      <span>{{ player.gamesPlayed }}</span>
+      <span>{{ player.wins }}</span>
+      <span>{{ player.totalPoints }}</span>
+    </div>
+  </mat-card>
+</section>

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
-import {CommonModule, NgOptimizedImage} from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { MatToolbar } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { GameSessionService } from '../../game-session.service';
@@ -15,8 +15,7 @@ import { Observable } from 'rxjs';
     CommonModule,
     MatToolbar,
     MatButtonModule,
-    MatIconModule,
-    NgOptimizedImage
+    MatIconModule
   ],
   templateUrl: './nav-header.component.html',
   styleUrl: './nav-header.component.scss'
@@ -58,5 +57,9 @@ export class NavHeaderComponent {
   logout(): void {
     this.authService.logout();
     void this.router.navigateByUrl('/start');
+  }
+
+  openProfile(): void {
+    void this.router.navigateByUrl('/profile');
   }
 }
