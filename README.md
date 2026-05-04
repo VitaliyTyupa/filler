@@ -45,6 +45,12 @@ Default local WebSocket URL is defined in `public/env.js`:
 ws://localhost:8080/ws
 ```
 
+Default local API URL for auth is:
+
+```text
+http://localhost:8080
+```
+
 ## Production Prerequisites
 
 The production server must already have:
@@ -69,20 +75,21 @@ echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 1. Copy deployment files to the server:
 
 ```bash
-scp docker-compose.prod.yml .env.prod.example user@server:/opt/filler/
+scp docker-compose.prod.yml .env.prod user@server:/opt/filler/
 ```
 
 2. Create the runtime env file:
 
 ```bash
 cd /opt/filler
-cp .env.prod.example .env
+cp .env.prod .env
 ```
 
 3. Verify the frontend runtime WebSocket URL in `.env`:
 
 ```bash
 FILLER_WS_URL=wss://api.leo-lab.app/ws
+FILLER_API_URL=https://api.leo-lab.app
 ```
 
 4. Ensure Traefik external network exists:

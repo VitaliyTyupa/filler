@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { NavHeaderComponent } from './main/nav-header/nav-header.component';
 import { CpuTauntService } from './game/taunts/cpu-taunt.service';
+import { AuthService } from './auth/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -13,7 +14,11 @@ import { CpuTauntService } from './game/taunts/cpu-taunt.service';
 export class AppComponent {
   title = 'filler';
 
-  constructor(private readonly cpuTauntService: CpuTauntService) {
+  constructor(
+    private readonly cpuTauntService: CpuTauntService,
+    private readonly authService: AuthService
+  ) {
     void this.cpuTauntService;
+    this.authService.initialize()?.subscribe();
   }
 }

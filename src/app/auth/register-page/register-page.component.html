@@ -1,0 +1,19 @@
+<section class="auth-page">
+  <mat-card>
+    <h1>Реєстрація</h1>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <mat-form-field appearance="outline">
+        <mat-label>Ім'я користувача</mat-label>
+        <input matInput formControlName="username" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Пароль</mat-label>
+        <input matInput type="password" formControlName="password" />
+      </mat-form-field>
+
+      <button mat-flat-button color="primary" type="submit" [disabled]="loading">Зареєструватись</button>
+    </form>
+    <a routerLink="/login">Вже є акаунт? Увійти</a>
+  </mat-card>
+</section>

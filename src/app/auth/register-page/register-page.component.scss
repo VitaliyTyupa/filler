@@ -1,0 +1,25 @@
+.auth-page {
+  display: grid;
+  place-items: center;
+  min-height: calc(100dvh - 64px);
+  padding: 1rem;
+}
+
+mat-card {
+  width: min(420px, 100%);
+  padding: 1.25rem;
+}
+
+form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+a {
+  display: inline-block;
+  margin-top: 0.75rem;
+}

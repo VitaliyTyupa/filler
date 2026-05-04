@@ -19,3 +19,18 @@ mat-toolbar {
   gap: 0.75rem;
   flex-wrap: wrap;
 }
+
+.auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.username {
+  font-weight: 600;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+}

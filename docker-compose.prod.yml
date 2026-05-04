@@ -4,6 +4,7 @@ services:
     restart: always
     environment:
       FILLER_WS_URL: ${FILLER_WS_URL}
+      FILLER_API_URL: ${FILLER_API_URL}
     networks:
       - web
     labels:
@@ -15,11 +16,15 @@ services:
 
   filler-backend:
     image: ghcr.io/vitaliytyupa/filler-backend:latest
-    restart: always
+    restart: unless-stopped
     environment:
+      NODE_ENV: production
       PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      MONGODB_URI: ${MONGODB_URI}
     networks:
       - web
+      - mongo_net
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=web"
@@ -29,4 +34,6 @@ services:
 
 networks:
   web:
+    external: true
+  mongo_net:
     external: true
