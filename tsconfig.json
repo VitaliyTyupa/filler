@@ -20,13 +20,13 @@
     "module": "ES2022",
     "paths": {
       "@game-core": [
-        "packages/game-core/src/index.ts"
+        "packages/game-core/src/index"
       ],
       "@game-core/*": [
         "packages/game-core/src/*"
       ],
       "@shared": [
-        "packages/shared/src/index.ts"
+        "packages/shared/src/index"
       ],
       "@shared/*": [
         "packages/shared/src/*"

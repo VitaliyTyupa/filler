@@ -2,18 +2,25 @@
   "name": "@filler/server",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "tsx src/main.ts",
+    "dev": "nest start --watch",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/main.js"
+    "start": "nest start"
   },
   "dependencies": {
     "@filler/game-core": "file:../../packages/game-core",
     "@filler/shared": "file:../../packages/shared",
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/platform-express": "^10.4.15",
+    "@nestjs/platform-ws": "^10.4.15",
+    "@nestjs/websockets": "^10.4.15",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@nestjs/cli": "^10.4.9",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.1",
     "tsx": "^4.20.0",

@@ -42,7 +42,7 @@ npm run dev
 Default local WebSocket URL is defined in `public/env.js`:
 
 ```text
-ws://localhost:8080
+ws://localhost:8080/ws
 ```
 
 ## Production Prerequisites
@@ -82,7 +82,7 @@ cp .env.prod.example .env
 3. Verify the frontend runtime WebSocket URL in `.env`:
 
 ```bash
-FILLER_WS_URL=wss://api.leo-lab.app
+FILLER_WS_URL=wss://api.leo-lab.app/ws
 ```
 
 4. Ensure Traefik external network exists:
@@ -112,7 +112,7 @@ docker compose -f docker-compose.prod.yml --env-file .env ps
 8. Verify application endpoints:
 
 - frontend: `https://filler.leo-lab.app`
-- backend websocket endpoint behind Traefik: `wss://api.leo-lab.app`
+- backend websocket endpoint behind Traefik: `wss://api.leo-lab.app/ws`
 
 ## Update Procedure
 

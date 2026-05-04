@@ -31,7 +31,7 @@ export class WsGameClient {
   private closedListener?: () => void;
 
   constructor(url: string) {
-    this.socket = new WebSocket(url);
+    this.socket = new WebSocket(normalizeWsUrl(url));
     this.socket.binaryType = 'arraybuffer';
     this.socket.onmessage = (event) => this.handleMessage(event);
     this.socket.addEventListener('close', () => {
@@ -279,6 +279,20 @@ export class WsGameClient {
         gameOver: false
       });
     }, 40);
+  }
+}
+
+function normalizeWsUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.pathname === '' || parsed.pathname === '/') {
+      parsed.pathname = '/ws';
+    }
+    return parsed.toString();
+  } catch {
+    return trimmed;
   }
 }
 
