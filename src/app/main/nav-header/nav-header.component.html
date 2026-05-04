@@ -1,11 +1,11 @@
 <mat-toolbar>
-  <span class="brand">Filler</span>
-  <span class="spacer"></span>
-  <div class="actions">
-    <button mat-flat-button color="primary" (click)="newGame()">
-      Налаштувати нову гру
+  <div class="logo">
+    <button mat-button (click)="newGame()">
+      <mat-icon>autorenew</mat-icon>
     </button>
+    <span class="brand">Filler</span>
   </div>
+  <span class="spacer"></span>
   <ng-container *ngIf="user$ | async as user; else loginAction">
     <div class="auth-actions">
       <span class="username">{{ user.username }}</span>
