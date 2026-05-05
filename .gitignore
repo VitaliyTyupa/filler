@@ -41,3 +41,17 @@ testem.log
 .DS_Store
 Thumbs.db
 /apps/server/node_modules/
+
+# Environment files
+.env
+.env.*
+!.env*.example
+apps/server/.env
+apps/server/.env.*
+!apps/server/.env*.example
+
+# Non-canonical top-level app/package leftovers
+/client/
+/shared/
+/apps/client/
+/apps/server/dist/
