@@ -113,9 +113,9 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
   }
 
   onReject(): void {
-    console.log('reject');
+    this.realtimeService.disconnectOnlineSessions();
     this.gameSession.clear();
-    this.router.navigateByUrl('/start');
+    void this.router.navigateByUrl('/start');
   }
 
   onStartGame(): void {

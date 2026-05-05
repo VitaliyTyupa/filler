@@ -139,7 +139,14 @@ export class WsGameClient {
   }
 
   close(): void {
+    if (this.socket.readyState === WebSocket.CLOSING || this.socket.readyState === WebSocket.CLOSED) {
+      return;
+    }
     this.socket.close();
+  }
+
+  isOpen(): boolean {
+    return this.socket.readyState === WebSocket.OPEN;
   }
 
   private handleMessage(event: MessageEvent<string | ArrayBuffer | Blob>): void {
@@ -228,6 +235,9 @@ export class WsGameClient {
   }
 
   private send(event: ClientEvent): void {
+    if (this.socket.readyState !== WebSocket.OPEN) {
+      throw new Error('WebSocket connection is not open');
+    }
     this.socket.send(JSON.stringify(event));
   }
 

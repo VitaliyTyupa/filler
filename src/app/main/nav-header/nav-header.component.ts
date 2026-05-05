@@ -11,6 +11,7 @@ import { Observable } from 'rxjs';
 import { MatMenuModule } from '@angular/material/menu';
 import { AppLanguage } from '../../i18n/language';
 import { LanguageService } from '../../i18n/language.service';
+import { GameRealtimeService } from '../../game/realtime/game-realtime.service';
 
 @Component({
   selector: 'fil-nav-header',
@@ -32,6 +33,7 @@ export class NavHeaderComponent {
     private readonly gameSession: GameSessionService,
     private readonly router: Router,
     private readonly authService: AuthService,
+    private readonly realtimeService: GameRealtimeService,
     readonly languageService: LanguageService
   ) {
     this.user$ = this.authService.user$;
@@ -43,8 +45,9 @@ export class NavHeaderComponent {
   }
 
   newGame(): void {
+    this.realtimeService.disconnectOnlineSessions();
     this.gameSession.clear();
-    this.router.navigateByUrl('/start');
+    void this.router.navigateByUrl('/start');
   }
 
   login(): void {
@@ -52,6 +55,7 @@ export class NavHeaderComponent {
   }
 
   logout(): void {
+    this.realtimeService.disconnectOnlineSessions();
     this.authService.logout();
     void this.router.navigateByUrl('/login');
   }

@@ -18,6 +18,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { BOARD_PRESETS } from '../game.constants';
 import { CpuDifficulty, GameMode, GameSessionService, GameSettings } from '../game-session.service';
+import { GameRealtimeService } from '../game/realtime/game-realtime.service';
 
 type BoardPresetOption = (typeof BOARD_PRESETS)[number];
 
@@ -64,7 +65,8 @@ export class StartPageComponent {
   constructor(
     private readonly fb: FormBuilder,
     private readonly router: Router,
-    private readonly gameSession: GameSessionService
+    private readonly gameSession: GameSessionService,
+    private readonly realtimeService: GameRealtimeService
   ) {
     this.form = this.fb.group({
       mode: this.fb.control<GameMode>('cpu', { validators: Validators.required, nonNullable: true }),
@@ -104,11 +106,12 @@ export class StartPageComponent {
       cpuDifficulty: rawValue.cpuDifficulty
     };
 
+    this.realtimeService.disconnectOnlineSessions();
     this.gameSession.clearRealtimeSession();
     this.gameSession.setSettings(settings);
 
     const targetRoute = rawValue.mode === 'online' ? '/waiting' : '/game';
-    this.router.navigateByUrl(targetRoute);
+    void this.router.navigateByUrl(targetRoute);
   }
 
   private buildPlayers(mode: GameMode, player1: string): GameSettings['players'] {

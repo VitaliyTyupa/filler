@@ -251,6 +251,23 @@ export class GameRealtimeService {
     this.wsClient.requestRematch(sessionId);
   }
 
+  disconnectOnlineSessions(): void {
+    this.wsClient?.close();
+    this.wsClient = undefined;
+
+    for (const [sessionId, transport] of Array.from(this.sessionTransport.entries())) {
+      if (transport !== 'ws') {
+        continue;
+      }
+
+      this.sessionTransport.delete(sessionId);
+      this.sessions.delete(sessionId);
+      this.tauntMeta.delete(sessionId);
+    }
+
+    this.sessionUiStore.reset();
+  }
+
   private createSessionId(): string {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID();
@@ -268,9 +285,14 @@ export class GameRealtimeService {
 
   private async getWsClient(): Promise<WsGameClient> {
     const wsUrl = this.requireWsUrl();
+    if (this.wsClient && !this.wsClient.isOpen()) {
+      this.wsClient = undefined;
+    }
+
     if (!this.wsClient) {
       this.wsClient = new WsGameClient(wsUrl);
       this.wsClient.onClosed(() => {
+        this.wsClient = undefined;
         for (const [sessionId, transport] of this.sessionTransport.entries()) {
           if (transport === 'ws') {
             this.sessionUiStore.markInterrupted(sessionId);
