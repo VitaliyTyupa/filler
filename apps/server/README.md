@@ -4,7 +4,7 @@ NestJS server with HTTP endpoints and WebSocket gameplay sessions.
 
 Required environment variables:
 
-- `MONGODB_URI` (example: `mongodb://filler_admin:zagalnasprava@mongodb:27017/filler?authSource=filler`)
+- `MONGODB_URI` (example: `mongodb://{user}:{pwd}@mongodb:27017/filler?authSource=filler`)
 - `JWT_SECRET`
 
 Environment loading:
