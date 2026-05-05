@@ -8,10 +8,7 @@ async function bootstrap(): Promise<void> {
   const runtimeConfig = initRuntimeConfig();
   const app = await NestFactory.create(AppModule);
   app.useWebSocketAdapter(new WsAdapter(app));
-  app.enableCors({
-    origin: true,
-    credentials: false
-  });
+  app.enableCors();
 
   await app.listen(runtimeConfig.port);
   console.log(`Server is listening on http://localhost:${runtimeConfig.port} (${runtimeConfig.nodeEnv})`);

@@ -9,8 +9,9 @@ Required environment variables:
 
 Environment loading:
 
-- Development: `.env.development` then `.env`
-- Production: `.env.production` then `.env`
+- The server first reads process environment variables provided by the runtime
+- For local file-based runs it also loads `.env.<NODE_ENV>` and then `.env`
+- In production via Portainer, prefer stack environment variables instead of repo env files
 
 Local MongoDB for development:
 
@@ -22,6 +23,12 @@ Local MongoDB for development:
    - `npm run dev`
 4. Stop Mongo:
    - `npm run db:down`
+
+## Production Note
+
+- `JWT_SECRET` must be provided by the runtime and stay stable for the environment
+- `MONGODB_URI` must also come from runtime configuration
+- Do not commit real production secrets into repository env files
 
 ## Endpoints
 

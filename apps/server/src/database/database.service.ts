@@ -17,7 +17,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     const uri = process.env['MONGODB_URI'];
     if (!uri) {
-      throw new Error('MONGODB_URI is required. Check .env.development/.env.production or container environment.');
+      throw new Error('MONGODB_URI is required. Provide it via runtime environment or local env file.');
     }
 
     this.client = new MongoClient(uri);

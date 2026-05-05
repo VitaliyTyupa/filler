@@ -14,7 +14,13 @@ The main deployment blockers were removed:
 - Backend Docker image now builds from the repository root, so local `packages/*` dependencies are available during image build
 - Backend production image is bundled into a single runnable `dist/main.js`, so Node does not depend on TypeScript path aliases at runtime
 
-Prepared deployment files:
+Primary production deployment model:
+
+- deploy images through Portainer Stack
+- set backend runtime variables in the Portainer stack environment
+- do not rely on committed `.env` files for production
+
+Reference files:
 
 - `docker-compose.prod.yml`
 - `.env.prod.example`
@@ -56,7 +62,7 @@ http://localhost:8080
 The production server must already have:
 
 - Docker Engine
-- Docker Compose plugin
+- Portainer
 - Traefik running and attached to external Docker network `web`
 - DNS records:
   - `filler.leo-lab.app`
@@ -70,59 +76,33 @@ If GHCR packages are private, authenticate first:
 echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 ```
 
-## Deployment Order
+## Production Via Portainer
 
-1. Copy deployment files to the server:
+Use a Portainer stack based on `docker-compose.prod.yml` or an equivalent inline stack.
 
-```bash
-scp docker-compose.prod.yml .env.prod user@server:/opt/filler/
-```
+Required backend environment variables in the stack:
 
-2. Create the runtime env file:
+- `NODE_ENV=production`
+- `PORT=3000`
+- `JWT_SECRET=<stable production secret>`
+- `MONGODB_URI=<production mongo uri>`
 
-```bash
-cd /opt/filler
-cp .env.prod .env
-```
+Frontend environment variables are not required for the current setup. The frontend infers:
 
-3. Ensure Traefik external network exists:
+- API origin as `https://api.<current-domain>`
+- WebSocket URL as `wss://api.<current-domain>/ws`
 
-```bash
-docker network inspect web >/dev/null 2>&1 || docker network create web
-```
+Operational checks after deploy:
 
-4. Pull the latest images:
+- `https://filler.leo-lab.app`
+- `https://api.leo-lab.app/health`
+- `wss://api.leo-lab.app/ws`
 
-```bash
-docker compose -f docker-compose.prod.yml --env-file .env pull
-```
+## Env Files
 
-5. Start or update the stack:
-
-```bash
-docker compose -f docker-compose.prod.yml --env-file .env up -d
-```
-
-6. Check container state:
-
-```bash
-docker compose -f docker-compose.prod.yml --env-file .env ps
-```
-
-7. Verify application endpoints:
-
-- frontend: `https://filler.leo-lab.app`
-- backend websocket endpoint behind Traefik: `wss://api.leo-lab.app/ws`
-
-## Update Procedure
-
-To deploy a newer version:
-
-```bash
-cd /opt/filler
-docker compose -f docker-compose.prod.yml --env-file .env pull
-docker compose -f docker-compose.prod.yml --env-file .env up -d
-```
+- `.env.prod.example` is only a reference template and must not contain real secrets
+- committed `.env` files are not used as the source of truth for production
+- `apps/server/.env.development` or `apps/server/.env` can still be used for local backend runs if you want file-based local config
 
 ## Image Publishing
 
