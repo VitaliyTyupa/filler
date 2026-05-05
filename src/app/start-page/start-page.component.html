@@ -44,18 +44,6 @@
         </mat-form-field>
       }
 
-      <mat-form-field appearance="outline" class="form-field">
-        <mat-label i18n="@@startPlayerOneName">Player 1 name</mat-label>
-        <input matInput id="player1Name" type="text" formControlName="player1Name" i18n-placeholder="@@startEnterYourName" placeholder="Enter your name" />
-        @if (player1Control.invalid && (player1Control.dirty || player1Control.touched)) {
-          @if (player1Control.hasError('required')) {
-            <mat-error i18n="@@startRequiredField">Обов'язкове поле</mat-error>
-          } @else if (player1Control.hasError('minlength')) {
-            <mat-error i18n="@@startMinimumTwoChars">Мінімум 2 символи</mat-error>
-          }
-        }
-      </mat-form-field>
-
       <div class="actions">
         <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid" i18n="@@startSubmit">Почати гру</button>
       </div>

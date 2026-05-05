@@ -1,15 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Router } from '@angular/router';
-import { GameState } from '@game-core';
+import { OpenGameListItem } from '@shared';
+import { AuthService } from '../auth/auth.service';
 import { GameSessionService, GameSettings } from '../game-session.service';
 import { GameRealtimeService } from '../game/realtime/game-realtime.service';
 
@@ -18,61 +15,49 @@ import { GameRealtimeService } from '../game/realtime/game-realtime.service';
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     MatButtonModule,
     MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatTabsModule,
-    MatProgressSpinnerModule
+    MatTabsModule
   ],
   templateUrl: './waiting-page.component.html',
   styleUrl: './waiting-page.component.scss'
 })
 export class WaitingPageComponent implements OnInit, OnDestroy {
   settings?: GameSettings;
-  isWaiting = true;
+  openGames: OpenGameListItem[] = [];
+  isPublishing = false;
   isJoining = false;
-  isReady = false;
   canStart = false;
-  guestConnected = false;
   hostConnected = false;
-  lobbyCode = '';
-  joinCode = '';
+  guestConnected = false;
   errorMessage = '';
-  usesOpponentSettings = false;
   private subscriptions: Subscription[] = [];
 
   constructor(
     private readonly router: Router,
     readonly gameSession: GameSessionService,
-    private readonly realtimeService: GameRealtimeService
+    private readonly realtimeService: GameRealtimeService,
+    private readonly authService: AuthService
   ) {}
 
   ngOnInit(): void {
-    if (!this.gameSession.hasSettings()) {
-      this.router.navigateByUrl('/start');
-      return;
-    }
-
     const currentSettings = this.gameSession.getSettings();
-    if (!currentSettings) {
-      this.router.navigateByUrl('/start');
-      return;
-    }
-
-    if (currentSettings.mode !== 'online') {
-      this.router.navigateByUrl('/start');
+    if (!currentSettings || currentSettings.mode !== 'online') {
+      void this.router.navigateByUrl('/start');
       return;
     }
 
     this.settings = currentSettings;
-    this.usesOpponentSettings = this.gameSession.getRealtimeSession()?.role === 'guest';
     this.subscriptions.push(
+      this.realtimeService.openGames$.subscribe((games) => {
+        this.openGames = games;
+        this.syncGuestSessionWithSnapshot(games);
+      }),
       this.realtimeService.lobbyState$.subscribe((state) => {
-        if (state.sessionId !== this.lobbyCode) {
+        if (state.sessionId !== this.currentSessionId) {
           return;
         }
+
         this.hostConnected = state.hostConnected;
         this.guestConnected = state.guestConnected;
         this.canStart = state.canStart;
@@ -87,150 +72,97 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
         }
       }),
       this.realtimeService.gameStarted$.subscribe((state) => {
-        if (state.sessionId !== this.lobbyCode) {
+        if (state.sessionId !== this.currentSessionId) {
           return;
         }
-        const role = this.gameSession.getRealtimeSession()?.role;
+
+        const role = this.currentRole;
         if (!role) {
           this.errorMessage = $localize`:@@waitingRoleDetectFailed:Не вдалося визначити роль гравця`;
           return;
         }
+
         this.gameSession.setRealtimeSession({
           sessionId: state.sessionId,
           started: true,
           role,
           hostName: state.hostName,
-          guestName: state.guestName
+          guestName: state.guestName,
+          startedAt: new Date().toISOString()
         });
-        this.router.navigateByUrl('/game');
+        void this.router.navigateByUrl('/game');
       })
     );
-    void this.ensureHostLobby();
+
+    void this.realtimeService.ensureLobbyConnection().catch((error: unknown) => {
+      this.errorMessage = error instanceof Error ? error.message : $localize`:@@waitingLobbyConnectFailed:Не вдалося підключитись до lobby`;
+    });
   }
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
-  }
 
-  onReject(): void {
-    console.log('reject');
-    this.gameSession.clear();
-    this.router.navigateByUrl('/start');
-  }
-
-  onStartGame(): void {
-    if (!this.lobbyCode || !this.canStart) {
-      return;
+    const realtimeSession = this.gameSession.getRealtimeSession();
+    if (realtimeSession && !realtimeSession.started) {
+      this.realtimeService.disconnectOnlineSessions();
+      this.gameSession.clearRealtimeSession();
     }
-    this.realtimeService.startGame(this.lobbyCode);
   }
 
-  onToggleReady(): void {
-    if (!this.lobbyCode) {
-      return;
+  get currentSessionId(): string | undefined {
+    return this.gameSession.getRealtimeSession()?.sessionId;
+  }
+
+  get currentRole(): 'host' | 'guest' | undefined {
+    return this.gameSession.getRealtimeSession()?.role;
+  }
+
+  get canPublishOwnGame(): boolean {
+    return !this.isPublishing && !this.currentSessionId;
+  }
+
+  get canJoinOtherOpenGames(): boolean {
+    if (!this.currentSessionId) {
+      return true;
     }
-    this.isReady = !this.isReady;
-    this.realtimeService.setReady(this.lobbyCode, this.isReady);
+
+    return this.currentRole === 'host' && !!this.currentPublishedGame;
   }
 
-  booleanLabel(value: boolean): string {
-    return value
-      ? $localize`:@@commonYes:так`
-      : $localize`:@@commonNo:ні`;
+  get currentPublishedGame(): OpenGameListItem | null {
+    if (this.currentRole !== 'host' || !this.currentSessionId) {
+      return null;
+    }
+
+    return this.openGames.find((game) => game.sessionId === this.currentSessionId) ?? null;
   }
 
-  opponentSettingsNotice(config: GameSettings): string {
-    return $localize`:@@waitingOpponentSettingsNotice:Гра буде за налаштуваннями суперника: поле ${config.board.cols}:cols:×${config.board.rows}:rows:, палітра на ${config.paletteSize}:paletteSize: кольорів.`;
+  get currentGuestGame(): OpenGameListItem | null {
+    if (this.currentRole !== 'guest' || !this.currentSessionId) {
+      return null;
+    }
+
+    return this.openGames.find((game) => game.sessionId === this.currentSessionId) ?? null;
   }
 
-  connectedStatusText(): string {
-    return $localize`:@@waitingConnected:Connected: host=${this.booleanLabel(this.hostConnected)}:host:, guest=${this.booleanLabel(this.guestConnected)}:guest:`;
-  }
-
-  readyStatusText(): string {
-    return $localize`:@@waitingReady:Ready: ${this.booleanLabel(this.isReady)}:ready:`;
-  }
-
-  pendingGuestLabel(): string {
-    return $localize`:@@waitingPendingGuest:Очікується...`;
-  }
-
-  readyToggleLabel(): string {
-    return this.isReady
-      ? $localize`:@@waitingToggleNotReady:Not Ready`
-      : $localize`:@@waitingToggleReady:Ready`;
-  }
-
-  async onJoinByCode(): Promise<void> {
-    const code = this.joinCode.trim();
-    if (!code) {
+  async onPublishOwnGame(): Promise<void> {
+    if (!this.settings || !this.canPublishOwnGame) {
       return;
     }
 
     this.errorMessage = '';
-    this.isJoining = true;
+    this.isPublishing = true;
     try {
-      const joined = await this.realtimeService.joinGame(code, this.settings?.players.find((player) => player.id === 1)?.name);
-      this.isJoining = false;
-      if (!joined) {
-        this.errorMessage = $localize`:@@waitingLobbyNotFound:Lobby не знайдено`;
-        return;
-      }
-
-      this.lobbyCode = joined.sessionId;
-      this.gameSession.setRealtimeSession({
-        sessionId: joined.sessionId,
-        started: false,
-        role: 'guest',
-        hostName: joined.hostName,
-        guestName: joined.guestName
-      });
-      this.applyAuthoritativeOnlineSettings(joined.state, joined.hostName, joined.guestName);
-      this.usesOpponentSettings = true;
-      this.isWaiting = false;
-      this.isReady = false;
-      this.realtimeService.setReady(this.lobbyCode, false);
-    } catch (error) {
-      this.isJoining = false;
-      this.errorMessage = error instanceof Error ? error.message : $localize`:@@waitingLobbyJoinFailed:Не вдалося підключитись до lobby`;
-    }
-  }
-
-  private async ensureHostLobby(): Promise<void> {
-    const existing = this.gameSession.getRealtimeSession();
-    if (existing?.sessionId) {
-      if (existing.started) {
-        this.router.navigateByUrl('/game');
-        return;
-      }
-      this.lobbyCode = existing.sessionId;
-      this.gameSession.setRealtimeSession({
-        sessionId: existing.sessionId,
-        started: false,
-        role: existing.role ?? 'host',
-        hostName: existing.hostName,
-        guestName: existing.guestName
-      });
-      this.usesOpponentSettings = existing.role === 'guest';
-      this.isWaiting = false;
-      return;
-    }
-
-    if (!this.settings) {
-      return;
-    }
-
-    try {
-      const created = await this.realtimeService.createGame({
+      const playerName = this.localPlayerName();
+      const created = await this.realtimeService.publishOpenGame({
         cols: this.settings.board.cols,
         rows: this.settings.board.rows,
         paletteSize: this.settings.paletteSize,
         seed: Date.now() >>> 0,
-        playerName: this.settings.players.find((player) => player.id === 1)?.name,
+        playerName,
         mode: 'online'
       });
 
-      this.lobbyCode = created.sessionId;
       this.gameSession.setRealtimeSession({
         sessionId: created.sessionId,
         started: false,
@@ -238,18 +170,149 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
         hostName: created.hostName,
         guestName: created.guestName
       });
-      this.applyAuthoritativeOnlineSettings(created.state, created.hostName, created.guestName);
-      this.usesOpponentSettings = false;
-      this.isWaiting = false;
-      this.isReady = false;
-      this.realtimeService.setReady(this.lobbyCode, false);
+      this.applyAuthoritativeOnlineSettings(created.state.cols, created.state.rows, created.state.paletteSize, created.hostName, created.guestName);
     } catch (error) {
       this.errorMessage = error instanceof Error ? error.message : $localize`:@@waitingLobbyCreateFailed:Не вдалося створити lobby`;
-      this.isWaiting = false;
+    } finally {
+      this.isPublishing = false;
     }
   }
 
-  private applyAuthoritativeOnlineSettings(state: GameState, hostName?: string, guestName?: string): void {
+  async onJoinOpenGame(game: OpenGameListItem): Promise<void> {
+    if (!this.settings || !this.canJoinOtherOpenGames || game.status !== 'free') {
+      return;
+    }
+
+    this.errorMessage = '';
+    this.isJoining = true;
+    try {
+      const joined = await this.realtimeService.requestOpenGameJoin(game.sessionId, this.localPlayerName());
+      if (!joined) {
+        this.errorMessage = $localize`:@@waitingLobbyNotFound:Lobby не знайдено`;
+        return;
+      }
+
+      this.gameSession.setRealtimeSession({
+        sessionId: joined.sessionId,
+        started: false,
+        role: 'guest',
+        hostName: joined.hostName,
+        guestName: joined.guestName
+      });
+      this.applyAuthoritativeOnlineSettings(game.cols, game.rows, game.paletteSize, joined.hostName, joined.guestName);
+    } catch (error) {
+      this.errorMessage = error instanceof Error ? error.message : $localize`:@@waitingLobbyJoinFailed:Не вдалося підключитись до lobby`;
+    } finally {
+      this.isJoining = false;
+    }
+  }
+
+  onCancelJoinRequest(): void {
+    if (this.currentRole !== 'guest' || !this.currentSessionId) {
+      return;
+    }
+
+    this.errorMessage = '';
+    this.realtimeService.cancelOpenGameJoin(this.currentSessionId);
+  }
+
+  onConfirmJoinRequest(): void {
+    if (this.currentRole !== 'host' || !this.currentSessionId) {
+      return;
+    }
+
+    this.errorMessage = '';
+    this.realtimeService.confirmOpenGameJoin(this.currentSessionId);
+  }
+
+  onRejectJoinRequest(): void {
+    if (this.currentRole !== 'host' || !this.currentSessionId) {
+      return;
+    }
+
+    this.errorMessage = '';
+    this.realtimeService.rejectOpenGameJoin(this.currentSessionId);
+  }
+
+  onStartGame(): void {
+    if (this.currentRole !== 'host' || !this.currentSessionId || !this.canStart) {
+      return;
+    }
+
+    this.errorMessage = '';
+    this.realtimeService.startGame(this.currentSessionId);
+  }
+
+  onBackToSetup(): void {
+    this.realtimeService.disconnectOnlineSessions();
+    this.gameSession.clear();
+    void this.router.navigateByUrl('/start');
+  }
+
+  statusLabel(status: OpenGameListItem['status']): string {
+    switch (status) {
+      case 'free':
+        return $localize`:@@waitingStatusFree:Вільний`;
+      case 'joining':
+        return $localize`:@@waitingStatusJoining:Приєднання`;
+      case 'confirmed':
+        return $localize`:@@waitingStatusBusy:Зайнятий`;
+    }
+  }
+
+  statusClass(status: OpenGameListItem['status']): string {
+    switch (status) {
+      case 'free':
+        return 'status-chip--free';
+      case 'joining':
+        return 'status-chip--joining';
+      case 'confirmed':
+        return 'status-chip--confirmed';
+    }
+  }
+
+  isCurrentGuestGame(game: OpenGameListItem): boolean {
+    return this.currentRole === 'guest' && this.currentSessionId === game.sessionId;
+  }
+
+  isCurrentPublishedGame(game: OpenGameListItem): boolean {
+    return this.currentRole === 'host' && this.currentSessionId === game.sessionId;
+  }
+
+  localPlayerName(): string {
+    return this.authService.user?.username?.trim()
+      || this.settings?.players.find((player) => player.id === 1)?.name
+      || $localize`:@@playerFallbackName:Гравець ${1}:playerId:`;
+  }
+
+  pendingGuestLabel(): string {
+    return $localize`:@@waitingPendingGuest:Очікується...`;
+  }
+
+  private syncGuestSessionWithSnapshot(games: OpenGameListItem[]): void {
+    if (this.currentRole !== 'guest' || !this.currentSessionId) {
+      return;
+    }
+
+    const current = games.find((game) => game.sessionId === this.currentSessionId);
+    if (current) {
+      return;
+    }
+
+    this.gameSession.clearRealtimeSession();
+    this.hostConnected = false;
+    this.guestConnected = false;
+    this.canStart = false;
+    this.errorMessage = $localize`:@@waitingRequestCancelled:Запит на приєднання більше не активний`;
+  }
+
+  private applyAuthoritativeOnlineSettings(
+    cols: number,
+    rows: number,
+    paletteSize: number,
+    hostName?: string,
+    guestName?: string
+  ): void {
     const currentSettings = this.gameSession.getSettings();
     if (!currentSettings) {
       return;
@@ -258,11 +321,8 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
     const authoritativeSettings: GameSettings = {
       ...currentSettings,
       mode: 'online',
-      board: {
-        cols: state.cols,
-        rows: state.rows
-      },
-      paletteSize: this.normalizePaletteSize(state.paletteSize),
+      board: { cols, rows },
+      paletteSize: this.normalizePaletteSize(paletteSize),
       players: [
         {
           id: 1,
@@ -290,5 +350,4 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
     }
     return 5;
   }
-
 }

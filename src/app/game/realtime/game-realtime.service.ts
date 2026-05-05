@@ -11,11 +11,12 @@ import {
   MoveInput,
   pickCpuMove
 } from '@game-core';
-import { WsGameClient } from './ws-game-client';
+import { OpenGameListItem } from '@shared';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { SessionUiStore } from '../session-ui.store';
 import { CpuTauntBusService } from '../taunts/cpu-taunt-bus.service';
 import { CpuTauntEvent } from '../taunts/cpu-taunt.types';
-import { Subject } from 'rxjs';
-import { SessionUiStore } from '../session-ui.store';
+import { WsGameClient } from './ws-game-client';
 
 export interface RealtimeCreateGameInput {
   cols: number;
@@ -46,10 +47,10 @@ export interface RealtimeLobbyState {
   sessionId: string;
   hostConnected: boolean;
   guestConnected: boolean;
-  hostReady: boolean;
-  guestReady: boolean;
   canStart: boolean;
   started: boolean;
+  published: boolean;
+  openGameStatus?: OpenGameListItem['status'];
   hostName: string;
   guestName?: string;
 }
@@ -84,6 +85,8 @@ export class GameRealtimeService {
   private readonly sessionTransport = new Map<string, 'local' | 'ws'>();
   private readonly lobbyStateSubject = new Subject<RealtimeLobbyState>();
   readonly lobbyState$ = this.lobbyStateSubject.asObservable();
+  private readonly openGamesSubject = new BehaviorSubject<OpenGameListItem[]>([]);
+  readonly openGames$ = this.openGamesSubject.asObservable();
   private readonly gameStartedSubject = new Subject<{ sessionId: string; turn: number; hostName: string; guestName?: string }>();
   readonly gameStarted$ = this.gameStartedSubject.asObservable();
   private readonly rematchStartedSubject = new Subject<RealtimeRematchStartedEvent>();
@@ -104,27 +107,13 @@ export class GameRealtimeService {
       this.requireWsUrl();
       const ws = await this.getWsClient();
       const created = await ws.createGame(input);
-      this.sessions.set(created.sessionId, created.state);
-      this.sessionTransport.set(created.sessionId, 'ws');
-      this.tauntMeta.set(created.sessionId, {
-        gameSeed: input.seed >>> 0,
-        moveNumber: 0,
-        milestonesFired: 0,
-        endTauntFired: false
-      });
+      this.trackSession(created.sessionId, created.state, 'ws', input.seed >>> 0);
       return created;
     }
 
     const state = createInitialState(input);
     const sessionId = this.createSessionId();
-    this.sessions.set(sessionId, state);
-    this.sessionTransport.set(sessionId, 'local');
-    this.tauntMeta.set(sessionId, {
-      gameSeed: input.seed >>> 0,
-      moveNumber: 0,
-      milestonesFired: 0,
-      endTauntFired: false
-    });
+    this.trackSession(sessionId, state, 'local', input.seed >>> 0);
     return {
       sessionId,
       state,
@@ -132,21 +121,55 @@ export class GameRealtimeService {
     };
   }
 
+  async publishOpenGame(input: RealtimeCreateGameInput): Promise<RealtimeCreateGameResult> {
+    this.requireWsUrl();
+    const ws = await this.getWsClient();
+    const created = await ws.publishOpenGame({
+      cols: input.cols,
+      rows: input.rows,
+      paletteSize: input.paletteSize,
+      seed: input.seed,
+      playerName: input.playerName
+    });
+    this.trackSession(created.sessionId, created.state, 'ws', input.seed >>> 0);
+    return created;
+  }
+
   async joinGame(sessionId: string, playerName?: string): Promise<RealtimeCreateGameResult | null> {
     this.requireWsUrl();
     const ws = await this.getWsClient();
     const joined = await ws.joinGame(sessionId, playerName);
-    this.sessions.set(joined.sessionId, joined.state);
-    this.sessionTransport.set(joined.sessionId, 'ws');
-    if (!this.tauntMeta.has(joined.sessionId)) {
-      this.tauntMeta.set(joined.sessionId, {
-        gameSeed: Date.now() >>> 0,
-        moveNumber: joined.state.turn,
-        milestonesFired: 0,
-        endTauntFired: false
-      });
-    }
+    this.trackSession(joined.sessionId, joined.state, 'ws', Date.now() >>> 0);
     return joined;
+  }
+
+  async requestOpenGameJoin(sessionId: string, playerName?: string): Promise<RealtimeCreateGameResult | null> {
+    this.requireWsUrl();
+    const ws = await this.getWsClient();
+    const joined = await ws.requestOpenGameJoin(sessionId, playerName);
+    this.trackSession(joined.sessionId, joined.state, 'ws', Date.now() >>> 0);
+    return joined;
+  }
+
+  cancelOpenGameJoin(sessionId: string): void {
+    if (!this.wsClient) {
+      return;
+    }
+    this.wsClient.cancelOpenGameJoin(sessionId);
+  }
+
+  confirmOpenGameJoin(sessionId: string): void {
+    if (!this.wsClient) {
+      return;
+    }
+    this.wsClient.confirmOpenGameJoin(sessionId);
+  }
+
+  rejectOpenGameJoin(sessionId: string): void {
+    if (!this.wsClient) {
+      return;
+    }
+    this.wsClient.rejectOpenGameJoin(sessionId);
   }
 
   async submitMove(sessionId: string, move: MoveInput): Promise<RealtimeMoveResult | null> {
@@ -176,7 +199,6 @@ export class GameRealtimeService {
 
     const diffs: GameDiff[] = [];
     let nextState = current;
-
     const playerResult = applyMove(nextState, move);
     if (!playerResult.diff) {
       return {
@@ -230,25 +252,41 @@ export class GameRealtimeService {
     return this.sessions.get(sessionId);
   }
 
-  setReady(sessionId: string, ready: boolean): void {
-    if (!this.wsUrl || !this.wsClient) {
-      return;
-    }
-    this.wsClient.setReady(sessionId, ready);
-  }
-
   startGame(sessionId: string): void {
-    if (!this.wsUrl || !this.wsClient) {
+    if (!this.wsClient) {
       return;
     }
     this.wsClient.startGame(sessionId);
   }
 
   requestRematch(sessionId: string): void {
-    if (!this.wsUrl || !this.wsClient) {
+    if (!this.wsClient) {
       return;
     }
     this.wsClient.requestRematch(sessionId);
+  }
+
+  async ensureLobbyConnection(): Promise<void> {
+    this.requireWsUrl();
+    await this.getWsClient();
+  }
+
+  disconnectOnlineSessions(): void {
+    this.wsClient?.close();
+    this.wsClient = undefined;
+    this.openGamesSubject.next([]);
+
+    for (const [sessionId, transport] of Array.from(this.sessionTransport.entries())) {
+      if (transport !== 'ws') {
+        continue;
+      }
+
+      this.sessionTransport.delete(sessionId);
+      this.sessions.delete(sessionId);
+      this.tauntMeta.delete(sessionId);
+    }
+
+    this.sessionUiStore.reset();
   }
 
   private createSessionId(): string {
@@ -268,14 +306,22 @@ export class GameRealtimeService {
 
   private async getWsClient(): Promise<WsGameClient> {
     const wsUrl = this.requireWsUrl();
+    if (this.wsClient && !this.wsClient.isOpen()) {
+      this.wsClient = undefined;
+    }
+
     if (!this.wsClient) {
       this.wsClient = new WsGameClient(wsUrl);
       this.wsClient.onClosed(() => {
+        this.wsClient = undefined;
         for (const [sessionId, transport] of this.sessionTransport.entries()) {
           if (transport === 'ws') {
             this.sessionUiStore.markInterrupted(sessionId);
           }
         }
+      });
+      this.wsClient.onOpenGamesSnapshot((payload) => {
+        this.openGamesSubject.next(payload.games);
       });
       this.wsClient.onLobbyState((payload) => {
         this.lobbyStateSubject.next(payload);
@@ -343,7 +389,19 @@ export class GameRealtimeService {
       });
       await this.wsClient.waitReady();
     }
+
     return this.wsClient;
+  }
+
+  private trackSession(sessionId: string, state: GameState, transport: 'local' | 'ws', gameSeed: number): void {
+    this.sessions.set(sessionId, state);
+    this.sessionTransport.set(sessionId, transport);
+    this.tauntMeta.set(sessionId, {
+      gameSeed,
+      moveNumber: state.turn,
+      milestonesFired: 0,
+      endTauntFired: false
+    });
   }
 
   private handleCpuTaunts(sessionId: string, previous: GameState, current: GameState): void {
@@ -352,11 +410,7 @@ export class GameRealtimeService {
     }
 
     const meta = this.tauntMeta.get(sessionId);
-    if (!meta) {
-      return;
-    }
-
-    if (previous.turn === current.turn) {
+    if (!meta || previous.turn === current.turn) {
       return;
     }
 
@@ -376,8 +430,7 @@ export class GameRealtimeService {
 
     if (!meta.endTauntFired && isGameOver(current)) {
       meta.endTauntFired = true;
-      const endTone = this.getEndTone(current);
-      this.emitTaunt(meta, endTone);
+      this.emitTaunt(meta, this.getEndTone(current));
     }
   }
 

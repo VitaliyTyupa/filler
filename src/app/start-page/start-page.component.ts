@@ -1,14 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators
-} from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -16,6 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
+import { AuthService } from '../auth/auth.service';
 import { BOARD_PRESETS } from '../game.constants';
 import { CpuDifficulty, GameMode, GameSessionService, GameSettings } from '../game-session.service';
 
@@ -57,14 +50,14 @@ export class StartPageComponent {
     mode: FormControl<GameMode>;
     boardPreset: FormControl<BoardPresetOption>;
     paletteSize: FormControl<5 | 7 | 10>;
-    player1Name: FormControl<string>;
     cpuDifficulty: FormControl<CpuDifficulty>;
   }>;
 
   constructor(
     private readonly fb: FormBuilder,
     private readonly router: Router,
-    private readonly gameSession: GameSessionService
+    private readonly gameSession: GameSessionService,
+    private readonly authService: AuthService
   ) {
     this.form = this.fb.group({
       mode: this.fb.control<GameMode>('cpu', { validators: Validators.required, nonNullable: true }),
@@ -73,7 +66,6 @@ export class StartPageComponent {
         nonNullable: true
       }),
       paletteSize: this.fb.control<5 | 7 | 10>(5, { validators: Validators.required, nonNullable: true }),
-      player1Name: this.fb.control('', { validators: [this.nameValidator(true)], nonNullable: true }),
       cpuDifficulty: this.fb.control<CpuDifficulty>('standard', {
         validators: Validators.required,
         nonNullable: true
@@ -85,17 +77,13 @@ export class StartPageComponent {
     return this.form.controls.mode.value === 'cpu';
   }
 
-  get player1Control(): FormControl<string> {
-    return this.form.controls.player1Name;
-  }
-
   onSubmit(): void {
     if (this.form.invalid) {
       return;
     }
 
     const rawValue = this.form.getRawValue();
-    const player1Name = rawValue.player1Name.trim();
+    const player1Name = this.authUsername();
     const settings: GameSettings = {
       mode: rawValue.mode,
       board: { cols: rawValue.boardPreset.cols, rows: rawValue.boardPreset.rows },
@@ -132,24 +120,7 @@ export class StartPageComponent {
     ];
   }
 
-  private nameValidator(required: boolean) {
-    return (control: AbstractControl<string>): ValidationErrors | null => {
-      const value = (control.value ?? '').trim();
-
-      if (required && !value) {
-        return { required: true };
-      }
-
-      if (value && value.length < 2) {
-        return {
-          minlength: {
-            requiredLength: 2,
-            actualLength: value.length
-          }
-        };
-      }
-
-      return null;
-    };
+  private authUsername(): string {
+    return this.authService.user?.username?.trim() || $localize`:@@playerFallbackName:Гравець ${1}:playerId:`;
   }
 }
