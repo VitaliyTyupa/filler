@@ -188,10 +188,6 @@ export class WsGameClient {
     this.socket.close();
   }
 
-  isOpen(): boolean {
-    return this.socket.readyState === WebSocket.OPEN;
-  }
-
   private handleMessage(event: MessageEvent<string | ArrayBuffer | Blob>): void {
     if (event.data instanceof ArrayBuffer) {
       this.handleBinaryMessage(event.data);
