@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StatsService } from './stats.service';
@@ -14,7 +14,7 @@ type RequestWithUser = Request & {
 @Controller('stats')
 @UseGuards(JwtAuthGuard)
 export class StatsController {
-  constructor(private readonly statsService: StatsService) {}
+  constructor(@Inject(StatsService) private readonly statsService: StatsService) {}
 
   @Post('games')
   async recordGame(

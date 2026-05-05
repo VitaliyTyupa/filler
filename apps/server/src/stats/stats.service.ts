@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { Collection } from 'mongodb';
 import { DatabaseService } from '../database/database.service';
 import { GameStatsDocument, GameStatsRecordInput } from './stats.types';
 
 @Injectable()
 export class StatsService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(@Inject(DatabaseService) private readonly databaseService: DatabaseService) {}
 
   async recordGame(user: { id: string; username: string }, input: GameStatsRecordInput): Promise<{ success: true }> {
     const opponentName = input.opponentName.trim();

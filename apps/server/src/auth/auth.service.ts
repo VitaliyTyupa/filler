@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
 import { Collection } from 'mongodb';
@@ -8,8 +8,8 @@ import { AuthPayload, AuthResponse, AuthUser } from './auth.types';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly jwtService: JwtService,
-    private readonly databaseService: DatabaseService
+    @Inject(JwtService) private readonly jwtService: JwtService,
+    @Inject(DatabaseService) private readonly databaseService: DatabaseService
   ) {}
 
   async register(usernameRaw: string, passwordRaw: string): Promise<AuthResponse> {
