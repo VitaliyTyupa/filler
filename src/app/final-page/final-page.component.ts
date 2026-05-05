@@ -86,6 +86,7 @@ export class FinalPageComponent implements OnInit, OnDestroy {
   }
 
   newGame(): void {
+    this.realtimeService.disconnectOnlineSessions();
     this.gameSession.clear();
     void this.router.navigateByUrl('/start');
   }

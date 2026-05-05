@@ -101,7 +101,6 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
-
     const realtimeSession = this.gameSession.getRealtimeSession();
     if (realtimeSession && !realtimeSession.started) {
       this.realtimeService.disconnectOnlineSessions();
