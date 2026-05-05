@@ -10,7 +10,7 @@ Filler consists of:
 
 The main deployment blockers were removed:
 
-- Frontend WebSocket URL is now runtime-configurable through `env.js`
+- Frontend now infers API and WebSocket hosts from the current browser origin
 - Backend Docker image now builds from the repository root, so local `packages/*` dependencies are available during image build
 - Backend production image is bundled into a single runnable `dist/main.js`, so Node does not depend on TypeScript path aliases at runtime
 
@@ -85,38 +85,31 @@ cd /opt/filler
 cp .env.prod .env
 ```
 
-3. Verify the frontend runtime WebSocket URL in `.env`:
-
-```bash
-FILLER_WS_URL=wss://api.leo-lab.app/ws
-FILLER_API_URL=https://api.leo-lab.app
-```
-
-4. Ensure Traefik external network exists:
+3. Ensure Traefik external network exists:
 
 ```bash
 docker network inspect web >/dev/null 2>&1 || docker network create web
 ```
 
-5. Pull the latest images:
+4. Pull the latest images:
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env pull
 ```
 
-6. Start or update the stack:
+5. Start or update the stack:
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
-7. Check container state:
+6. Check container state:
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env ps
 ```
 
-8. Verify application endpoints:
+7. Verify application endpoints:
 
 - frontend: `https://filler.leo-lab.app`
 - backend websocket endpoint behind Traefik: `wss://api.leo-lab.app/ws`

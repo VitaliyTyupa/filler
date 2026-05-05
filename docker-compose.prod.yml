@@ -2,9 +2,6 @@ services:
   filler-frontend:
     image: ghcr.io/vitaliytyupa/filler-frontend:latest
     restart: always
-    environment:
-      FILLER_WS_URL: ${FILLER_WS_URL}
-      FILLER_API_URL: ${FILLER_API_URL}
     networks:
       - web
     labels:
