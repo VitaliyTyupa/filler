@@ -8,6 +8,7 @@ import {
   encodeStateDiffFrame,
   JoinGameRequest,
   MoveRequest,
+  RematchRequest,
   ServerEvent,
   SetReadyRequest,
   StartGameRequest
@@ -129,6 +130,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     if (event.type === 'start_game') {
       this.handleStartGame(socket, event);
+      return;
+    }
+
+    if (event.type === 'rematch') {
+      this.handleRematch(socket, event);
       return;
     }
 
@@ -357,6 +363,50 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       payload: {
         sessionId,
         turn: state?.turn ?? 0,
+        hostName: lobby.hostName,
+        guestName: lobby.guestName
+      }
+    });
+  }
+
+  private handleRematch(socket: WebSocket, event: RematchRequest): void {
+    const sessionId = event.payload.sessionId;
+    const lobby = this.roomState.get(sessionId);
+    if (!lobby || this.socketToSession.get(socket) !== sessionId) {
+      this.send(socket, {
+        type: 'error',
+        payload: {
+          code: 'NOT_IN_ROOM',
+          message: 'Socket is not in room'
+        }
+      });
+      return;
+    }
+
+    if (!lobby.host || !lobby.guest) {
+      this.send(socket, {
+        type: 'error',
+        payload: {
+          code: 'REMATCH_UNAVAILABLE',
+          message: 'Both players must be connected for a rematch'
+        }
+      });
+      return;
+    }
+
+    const state = this.sessions.recreateGame(sessionId);
+    if (!state) {
+      this.sendSessionNotFound(socket);
+      return;
+    }
+
+    lobby.started = true;
+    this.broadcastLobbyState(sessionId);
+    this.sendToRoom(sessionId, {
+      type: 'rematch_started',
+      payload: {
+        sessionId,
+        state,
         hostName: lobby.hostName,
         guestName: lobby.guestName
       }

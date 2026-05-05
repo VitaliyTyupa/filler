@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { GameSessionService, GameResult, GameSettings } from '../game-session.service';
 import { AuthService } from '../auth/auth.service';
+import { GameRealtimeService } from '../game/realtime/game-realtime.service';
 import { StatsService } from '../stats/stats.service';
 
 @Component({
@@ -14,9 +16,11 @@ import { StatsService } from '../stats/stats.service';
   templateUrl: './final-page.component.html',
   styleUrl: './final-page.component.scss'
 })
-export class FinalPageComponent implements OnInit {
+export class FinalPageComponent implements OnInit, OnDestroy {
   result?: GameResult;
   settings?: GameSettings;
+  rematchPending = false;
+  private rematchSubscription?: Subscription;
 
   get winnerName(): string | null {
     if (!this.result || this.result.winner === 0) {
@@ -30,6 +34,7 @@ export class FinalPageComponent implements OnInit {
     private readonly gameSession: GameSessionService,
     private readonly router: Router,
     private readonly authService: AuthService,
+    private readonly realtimeService: GameRealtimeService,
     private readonly statsService: StatsService
   ) {}
 
@@ -42,17 +47,51 @@ export class FinalPageComponent implements OnInit {
       return;
     }
 
+    if (this.settings.mode === 'online') {
+      this.rematchSubscription = this.realtimeService.rematchStarted$.subscribe((event) => {
+        const session = this.gameSession.getRealtimeSession();
+        if (!session || session.sessionId !== event.sessionId) {
+          return;
+        }
+
+        this.rematchPending = false;
+        this.gameSession.clearResult();
+        this.gameSession.setRealtimeSession({
+          ...session,
+          started: true,
+          hostName: event.hostName,
+          guestName: event.guestName,
+          startedAt: new Date().toISOString()
+        });
+        void this.router.navigateByUrl('/game');
+      });
+    }
+
     this.tryRecordStats();
   }
 
   restart(): void {
+    if (this.settings?.mode === 'online') {
+      const sessionId = this.gameSession.getRealtimeSession()?.sessionId;
+      if (!sessionId || this.rematchPending) {
+        return;
+      }
+      this.rematchPending = true;
+      this.realtimeService.requestRematch(sessionId);
+      return;
+    }
+
     this.gameSession.clearResult();
-    this.router.navigateByUrl('/game');
+    void this.router.navigateByUrl('/game');
   }
 
   newGame(): void {
     this.gameSession.clear();
-    this.router.navigateByUrl('/start');
+    void this.router.navigateByUrl('/start');
+  }
+
+  ngOnDestroy(): void {
+    this.rematchSubscription?.unsubscribe();
   }
 
   getPlayerName(playerId: 1 | 2): string {

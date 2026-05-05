@@ -62,6 +62,13 @@ export interface RealtimeRemoteMoveEvent {
   winner?: GameWinner;
 }
 
+export interface RealtimeRematchStartedEvent {
+  sessionId: string;
+  state: GameState;
+  hostName: string;
+  guestName?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class GameRealtimeService {
   private static readonly TAUNT_MILESTONES: Array<10 | 30 | 50 | 70 | 90> = [10, 30, 50, 70, 90];
@@ -79,6 +86,8 @@ export class GameRealtimeService {
   readonly lobbyState$ = this.lobbyStateSubject.asObservable();
   private readonly gameStartedSubject = new Subject<{ sessionId: string; turn: number; hostName: string; guestName?: string }>();
   readonly gameStarted$ = this.gameStartedSubject.asObservable();
+  private readonly rematchStartedSubject = new Subject<RealtimeRematchStartedEvent>();
+  readonly rematchStarted$ = this.rematchStartedSubject.asObservable();
   private readonly remoteMoveSubject = new Subject<RealtimeRemoteMoveEvent>();
   readonly remoteMove$ = this.remoteMoveSubject.asObservable();
   private readonly tauntMeta = new Map<string, { gameSeed: number; moveNumber: number; milestonesFired: number; endTauntFired: boolean }>();
@@ -235,6 +244,13 @@ export class GameRealtimeService {
     this.wsClient.startGame(sessionId);
   }
 
+  requestRematch(sessionId: string): void {
+    if (!this.wsUrl || !this.wsClient) {
+      return;
+    }
+    this.wsClient.requestRematch(sessionId);
+  }
+
   private createSessionId(): string {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID();
@@ -266,6 +282,25 @@ export class GameRealtimeService {
       });
       this.wsClient.onGameStarted((payload) => {
         this.gameStartedSubject.next(payload);
+      });
+      this.wsClient.onRematchStarted((payload) => {
+        this.sessions.set(payload.sessionId, payload.state);
+        this.tauntMeta.set(payload.sessionId, {
+          gameSeed: Date.now() >>> 0,
+          moveNumber: 0,
+          milestonesFired: 0,
+          endTauntFired: false
+        });
+        this.sessionUiStore.syncGameState({
+          sessionId: payload.sessionId,
+          state: payload.state,
+          status: 'playing',
+          playerNames: {
+            1: payload.hostName,
+            2: payload.guestName ?? $localize`:@@playerFallbackName:Гравець ${2}:playerId:`
+          }
+        });
+        this.rematchStartedSubject.next(payload);
       });
       this.wsClient.onStateDiff((payload) => {
         const current = this.sessions.get(payload.sessionId);

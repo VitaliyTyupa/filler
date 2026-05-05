@@ -27,6 +27,23 @@ export class SessionManager {
     return this.sessions.get(sessionId);
   }
 
+  recreateGame(sessionId: SessionId): GameState | null {
+    const current = this.sessions.get(sessionId);
+    if (!current) {
+      return null;
+    }
+
+    const nextState = createInitialState({
+      cols: current.cols,
+      rows: current.rows,
+      paletteSize: current.paletteSize,
+      seed: Date.now() >>> 0
+    });
+
+    this.sessions.set(sessionId, nextState);
+    return nextState;
+  }
+
   handleMove(sessionId: SessionId, move: MoveInput): MoveResult | null {
     const state = this.sessions.get(sessionId);
     if (!state) {

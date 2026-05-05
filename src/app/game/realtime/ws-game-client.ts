@@ -26,6 +26,7 @@ export class WsGameClient {
   private pendingMove?: PendingMove;
   private lobbyStateListener?: (payload: Extract<ServerEvent, { type: 'lobby_state' }>['payload']) => void;
   private gameStartedListener?: (payload: Extract<ServerEvent, { type: 'game_started' }>['payload']) => void;
+  private rematchStartedListener?: (payload: Extract<ServerEvent, { type: 'rematch_started' }>['payload']) => void;
   private stateDiffListener?: (payload: Extract<ServerEvent, { type: 'state_diff' }>['payload']) => void;
   private gameOverListener?: (payload: Extract<ServerEvent, { type: 'game_over' }>['payload']) => void;
   private closedListener?: () => void;
@@ -106,6 +107,13 @@ export class WsGameClient {
     });
   }
 
+  requestRematch(sessionId: string): void {
+    this.send({
+      type: 'rematch',
+      payload: { sessionId }
+    });
+  }
+
   onLobbyState(listener: (payload: Extract<ServerEvent, { type: 'lobby_state' }>['payload']) => void): void {
     this.lobbyStateListener = listener;
   }
@@ -116,6 +124,10 @@ export class WsGameClient {
 
   onStateDiff(listener: (payload: Extract<ServerEvent, { type: 'state_diff' }>['payload']) => void): void {
     this.stateDiffListener = listener;
+  }
+
+  onRematchStarted(listener: (payload: Extract<ServerEvent, { type: 'rematch_started' }>['payload']) => void): void {
+    this.rematchStartedListener = listener;
   }
 
   onGameOver(listener: (payload: Extract<ServerEvent, { type: 'game_over' }>['payload']) => void): void {
@@ -196,6 +208,14 @@ export class WsGameClient {
 
     if (data.type === 'game_started') {
       this.gameStartedListener?.(data.payload);
+      return;
+    }
+
+    if (data.type === 'rematch_started') {
+      this.rematchStartedListener?.({
+        ...data.payload,
+        state: hydrateGameState(data.payload.state)
+      });
       return;
     }
 

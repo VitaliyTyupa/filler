@@ -46,12 +46,20 @@ export interface StartGameRequest {
   };
 }
 
+export interface RematchRequest {
+  type: 'rematch';
+  payload: {
+    sessionId: SessionId;
+  };
+}
+
 export type ClientEvent =
   | CreateGameRequest
   | MoveRequest
   | JoinGameRequest
   | SetReadyRequest
-  | StartGameRequest;
+  | StartGameRequest
+  | RematchRequest;
 
 export interface GameCreatedEvent {
   type: 'game_created';
@@ -115,6 +123,16 @@ export interface GameStartedEvent {
   };
 }
 
+export interface RematchStartedEvent {
+  type: 'rematch_started';
+  payload: {
+    sessionId: SessionId;
+    state: GameState;
+    hostName: string;
+    guestName?: string;
+  };
+}
+
 export interface ErrorEvent {
   type: 'error';
   payload: {
@@ -130,6 +148,7 @@ export type ServerEvent =
   | GameJoinedEvent
   | LobbyStateEvent
   | GameStartedEvent
+  | RematchStartedEvent
   | ErrorEvent;
 
 export const BINARY_FRAME_STATE_DIFF = 1;
