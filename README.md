@@ -102,7 +102,7 @@ Operational checks after deploy:
 
 - `.env.prod.example` is only a reference template and must not contain real secrets
 - committed `.env` files are not used as the source of truth for production
-- `apps/server/.env.development` or `apps/server/.env` can still be used for local backend runs if you want file-based local config
+- use `apps/server/.env.development.example` only as a starting point for a local untracked `apps/server/.env.development`
 
 ## Image Publishing
 

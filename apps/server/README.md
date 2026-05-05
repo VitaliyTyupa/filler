@@ -12,13 +12,14 @@ Environment loading:
 - The server first reads process environment variables provided by the runtime
 - For local file-based runs it also loads `.env.<NODE_ENV>` and then `.env`
 - In production via Portainer, prefer stack environment variables instead of repo env files
+- Example files are versioned as `.env.*.example`; real env files should stay untracked
 
 Local MongoDB for development:
 
 1. Start Mongo:
    - `npm run db:up`
 2. Use dev env:
-   - `MONGODB_URI=mongodb://filler_admin:zagalnasprava@localhost:27017/filler?authSource=filler`
+   - create `apps/server/.env.development` from `apps/server/.env.development.example`
 3. Start server:
    - `npm run dev`
 4. Stop Mongo:
