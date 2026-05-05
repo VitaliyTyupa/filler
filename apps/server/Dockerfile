@@ -1,4 +1,4 @@
-FROM node:20-alpine as build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
@@ -16,6 +16,11 @@ RUN npx esbuild src/main.ts \
   --format=cjs \
   --target=node20 \
   --tsconfig=tsconfig.json \
+  --external:@nestjs/microservices \
+  --external:@nestjs/microservices/* \
+  --external:@nestjs/platform-socket.io \
+  --external:class-transformer \
+  --external:class-validator \
   --outfile=dist/main.cjs
 
 FROM node:20-alpine
