@@ -25,6 +25,7 @@ export class WsGameClient {
   private pendingJoin?: PendingJoin;
   private pendingMove?: PendingMove;
   private lobbyStateListener?: (payload: Extract<ServerEvent, { type: 'lobby_state' }>['payload']) => void;
+  private openGamesSnapshotListener?: (payload: Extract<ServerEvent, { type: 'open_games_snapshot' }>['payload']) => void;
   private gameStartedListener?: (payload: Extract<ServerEvent, { type: 'game_started' }>['payload']) => void;
   private rematchStartedListener?: (payload: Extract<ServerEvent, { type: 'rematch_started' }>['payload']) => void;
   private stateDiffListener?: (payload: Extract<ServerEvent, { type: 'state_diff' }>['payload']) => void;
@@ -51,8 +52,12 @@ export class WsGameClient {
     });
   }
 
+  isOpen(): boolean {
+    return this.socket.readyState === WebSocket.OPEN;
+  }
+
   async createGame(payload: Extract<ClientEvent, { type: 'create_game' }>['payload']): Promise<{ sessionId: string; state: GameState; hostName: string; guestName?: string }> {
-    return new Promise<{ sessionId: string; state: GameState; hostName: string; guestName?: string }>((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       this.pendingCreate = { resolve, reject };
       this.send({
         type: 'create_game',
@@ -61,8 +66,18 @@ export class WsGameClient {
     });
   }
 
+  async publishOpenGame(payload: Extract<ClientEvent, { type: 'publish_open_game' }>['payload']): Promise<{ sessionId: string; state: GameState; hostName: string; guestName?: string }> {
+    return new Promise((resolve, reject) => {
+      this.pendingCreate = { resolve, reject };
+      this.send({
+        type: 'publish_open_game',
+        payload
+      });
+    });
+  }
+
   async move(sessionId: string, move: MoveInput): Promise<{ diffs: GameDiff[]; gameOver: boolean; winner?: GameWinner }> {
-    return new Promise<{ diffs: GameDiff[]; gameOver: boolean; winner?: GameWinner }>((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         const current = this.pendingMove;
         this.pendingMove = undefined;
@@ -84,7 +99,7 @@ export class WsGameClient {
   }
 
   async joinGame(sessionId: string, playerName?: string): Promise<{ sessionId: string; state: GameState; hostName: string; guestName?: string }> {
-    return new Promise<{ sessionId: string; state: GameState; hostName: string; guestName?: string }>((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       this.pendingJoin = { resolve, reject };
       this.send({
         type: 'join_game',
@@ -93,10 +108,34 @@ export class WsGameClient {
     });
   }
 
-  setReady(sessionId: string, ready: boolean): void {
+  async requestOpenGameJoin(sessionId: string, playerName?: string): Promise<{ sessionId: string; state: GameState; hostName: string; guestName?: string }> {
+    return new Promise((resolve, reject) => {
+      this.pendingJoin = { resolve, reject };
+      this.send({
+        type: 'request_open_game_join',
+        payload: { sessionId, playerName }
+      });
+    });
+  }
+
+  cancelOpenGameJoin(sessionId: string): void {
     this.send({
-      type: 'set_ready',
-      payload: { sessionId, ready }
+      type: 'cancel_open_game_join',
+      payload: { sessionId }
+    });
+  }
+
+  confirmOpenGameJoin(sessionId: string): void {
+    this.send({
+      type: 'confirm_open_game_join',
+      payload: { sessionId }
+    });
+  }
+
+  rejectOpenGameJoin(sessionId: string): void {
+    this.send({
+      type: 'reject_open_game_join',
+      payload: { sessionId }
     });
   }
 
@@ -118,16 +157,20 @@ export class WsGameClient {
     this.lobbyStateListener = listener;
   }
 
+  onOpenGamesSnapshot(listener: (payload: Extract<ServerEvent, { type: 'open_games_snapshot' }>['payload']) => void): void {
+    this.openGamesSnapshotListener = listener;
+  }
+
   onGameStarted(listener: (payload: Extract<ServerEvent, { type: 'game_started' }>['payload']) => void): void {
     this.gameStartedListener = listener;
   }
 
-  onStateDiff(listener: (payload: Extract<ServerEvent, { type: 'state_diff' }>['payload']) => void): void {
-    this.stateDiffListener = listener;
-  }
-
   onRematchStarted(listener: (payload: Extract<ServerEvent, { type: 'rematch_started' }>['payload']) => void): void {
     this.rematchStartedListener = listener;
+  }
+
+  onStateDiff(listener: (payload: Extract<ServerEvent, { type: 'state_diff' }>['payload']) => void): void {
+    this.stateDiffListener = listener;
   }
 
   onGameOver(listener: (payload: Extract<ServerEvent, { type: 'game_over' }>['payload']) => void): void {
@@ -208,6 +251,11 @@ export class WsGameClient {
       return;
     }
 
+    if (data.type === 'open_games_snapshot') {
+      this.openGamesSnapshotListener?.(data.payload);
+      return;
+    }
+
     if (data.type === 'lobby_state') {
       this.lobbyStateListener?.(data.payload);
       return;
@@ -227,7 +275,9 @@ export class WsGameClient {
     }
 
     if (data.type === 'game_over' && this.pendingMove) {
-      if (data.payload.sessionId !== this.pendingMove.sessionId) return;
+      if (data.payload.sessionId !== this.pendingMove.sessionId) {
+        return;
+      }
       clearTimeout(this.pendingMove.timer);
       this.pendingMove.resolve({ diffs: this.pendingMove.diffs, gameOver: true, winner: data.payload.winner });
       this.pendingMove = undefined;
@@ -261,6 +311,7 @@ export class WsGameClient {
         this.reschedulePendingMoveSettle();
         return;
       }
+
       this.stateDiffListener?.({
         sessionId: decoded.sessionId,
         diff: decoded.diff
@@ -354,12 +405,18 @@ function toUint16Array(value: Uint16Array | ArrayLike<number> | Record<string, n
 }
 
 function toNumberArray(value: ArrayLike<number> | Record<string, number>): number[] {
-  const maybeArrayLike = value as ArrayLike<number>;
-  if (typeof maybeArrayLike.length === 'number') {
-    return Array.from(maybeArrayLike);
+  if (Array.isArray(value)) {
+    return value;
   }
 
-  return Object.keys(value)
-    .sort((left, right) => Number(left) - Number(right))
-    .map((key) => (value as Record<string, number>)[key]);
+  if (typeof value.length === 'number') {
+    const arrayLike = value as ArrayLike<number>;
+    return Array.from({ length: arrayLike.length }, (_, index) => arrayLike[index] ?? 0);
+  }
+
+  const record = value as Record<string, number>;
+  return Object.keys(record)
+    .map((key) => Number(key))
+    .sort((a, b) => a - b)
+    .map((index) => record[String(index)] ?? 0);
 }

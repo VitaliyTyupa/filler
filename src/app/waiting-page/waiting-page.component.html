@@ -19,53 +19,173 @@
               </div>
               <div class="summary-row">
                 <span class="label" i18n="@@waitingPlayerOneLabel">Player 1</span>
-                <span class="value">{{ config.players[0].name }}</span>
+                <span class="value">{{ localPlayerName() }}</span>
               </div>
             </div>
 
-            @if (usesOpponentSettings) {
-              <p class="settings-notice">{{ opponentSettingsNotice(config) }}</p>
-            }
+            <div class="publish-panel">
+              <button
+                mat-raised-button
+                color="primary"
+                class="publish-button"
+                type="button"
+                [disabled]="!canPublishOwnGame"
+                (click)="onPublishOwnGame()"
+                i18n="@@waitingPublishGame">
+                Опублікувати власну гру
+              </button>
 
-            <div class="status">
-              @if (isWaiting) {
-                <div class="spinner">
-                  <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
-                  <p i18n="@@waitingSpinner">Очікування другого гравця…</p>
+              @if (currentPublishedGame; as game) {
+                <div class="request-panel">
+                  <p class="status-text">
+                    <span i18n="@@waitingPublishedStatus">Статус:</span>
+                    <strong class="status-chip" [ngClass]="statusClass(game.status)">{{ statusLabel(game.status) }}</strong>
+                  </p>
+                  <p class="status-text">
+                    <span i18n="@@waitingGuest">Guest:</span>
+                    <strong>{{ game.guestName || pendingGuestLabel() }}</strong>
+                  </p>
+
+                  @if (game.status === 'joining' || game.status === 'confirmed') {
+                    <div class="actions">
+                      <button mat-stroked-button type="button" (click)="onConfirmJoinRequest()" i18n="@@waitingConfirmJoin">
+                        Підтвердити
+                      </button>
+                      <button mat-stroked-button type="button" (click)="onRejectJoinRequest()" i18n="@@waitingRejectJoin">
+                        Відхилити
+                      </button>
+                      <button
+                        mat-raised-button
+                        color="primary"
+                        type="button"
+                        [disabled]="!canStart"
+                        (click)="onStartGame()"
+                        i18n="@@waitingStartGame">
+                        Почати
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (currentGuestGame; as guestGame) {
+                <div class="request-panel request-panel--guest">
+                  <p class="status-text">
+                    <span i18n="@@waitingJoinedHost">Host:</span>
+                    <strong>{{ guestGame.hostName }}</strong>
+                  </p>
+                  <p class="status-text">
+                    <span i18n="@@waitingPublishedStatus">Статус:</span>
+                    <strong class="status-chip" [ngClass]="statusClass(guestGame.status)">{{ statusLabel(guestGame.status) }}</strong>
+                  </p>
+
+                  @if (guestGame.status === 'joining') {
+                    <div class="actions">
+                      <button mat-stroked-button type="button" (click)="onCancelJoinRequest()" i18n="@@waitingCancelJoin">
+                        Відміна
+                      </button>
+                    </div>
+                  } @else if (guestGame.status === 'confirmed') {
+                    <p class="waiting-start" i18n="@@waitingAwaitingStart">Очікування старту від host</p>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="games-card">
+              <div class="games-header">
+                <h2 i18n="@@waitingOpenGamesTitle">Відкриті ігри</h2>
+              </div>
+
+              @if (openGames.length) {
+                <div class="games-table-wrap">
+                  <table class="games-table">
+                    <thead>
+                      <tr>
+                        <th i18n="@@waitingOpenGamesName">Ім'я</th>
+                        <th i18n="@@waitingOpenGamesBoard">Розмір</th>
+                        <th i18n="@@waitingOpenGamesPalette">Палета</th>
+                        <th i18n="@@waitingOpenGamesStatus">Статус</th>
+                        <th i18n="@@waitingOpenGamesAction">Дія</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (game of openGames; track game.sessionId) {
+                        <tr>
+                          <td data-label="Ім'я">{{ game.hostName }}</td>
+                          <td data-label="Розмір">{{ game.cols }}×{{ game.rows }}</td>
+                          <td data-label="Палета">{{ game.paletteSize }}</td>
+                          <td data-label="Статус">
+                            <span class="status-chip" [ngClass]="statusClass(game.status)">{{ statusLabel(game.status) }}</span>
+                          </td>
+                          <td data-label="Дія">
+                            @if (isCurrentPublishedGame(game)) {
+                              <span class="table-note" i18n="@@waitingOpenGamesYourGame">Твоя гра</span>
+                            } @else if (isCurrentGuestGame(game)) {
+                              @if (game.status === 'joining') {
+                                <button mat-stroked-button type="button" (click)="onCancelJoinRequest()" i18n="@@waitingCancelJoin">
+                                  Відміна
+                                </button>
+                              } @else if (game.status === 'confirmed') {
+                                <span class="table-note" i18n="@@waitingAwaitingStart">Очікування старту від host</span>
+                              } @else {
+                                <span class="table-note">-</span>
+                              }
+                            } @else if (game.status === 'free' && canJoinOtherOpenGames) {
+                              <button mat-stroked-button type="button" [disabled]="isJoining" (click)="onJoinOpenGame(game)" i18n="@@waitingJoin">
+                                Приєднатись
+                              </button>
+                            } @else {
+                              <span class="table-note">-</span>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
               } @else {
-                <div class="connected">
-                  <p class="status-text"><span i18n="@@waitingLobbyCode">Lobby code:</span> <strong>{{ lobbyCode }}</strong></p>
-                  <p class="status-text"><span i18n="@@waitingHost">Host:</span> <strong>{{ gameSession.getRealtimeSession()?.hostName ?? config.players[0].name }}</strong></p>
-                  <p class="status-text"><span i18n="@@waitingGuest">Guest:</span> <strong>{{ gameSession.getRealtimeSession()?.guestName ?? pendingGuestLabel() }}</strong></p>
-                  <p class="status-text">{{ connectedStatusText() }}</p>
-                  <p class="status-text">{{ readyStatusText() }}</p>
-                  <mat-form-field appearance="outline">
-                    <mat-label i18n="@@waitingJoinByCode">Join by code</mat-label>
-                    <input matInput [(ngModel)]="joinCode" i18n-placeholder="@@waitingJoinPlaceholder" placeholder="Встав код лобі">
-                  </mat-form-field>
-                  @if (errorMessage) {
-                    <p class="error">{{ errorMessage }}</p>
-                  }
-                  <div class="actions">
-                    <button mat-stroked-button type="button" (click)="onToggleReady()">{{ readyToggleLabel() }}</button>
-                    <button mat-stroked-button type="button" [disabled]="isJoining" (click)="onJoinByCode()" i18n="@@waitingJoin">
-                      Підключитись
+                <div class="empty-state">
+                  <div class="empty-state__icon" aria-hidden="true">+</div>
+                  <h3 i18n="@@waitingOpenGamesEmptyTitle">Зараз немає відкритих ігор</h3>
+                  <p i18n="@@waitingOpenGamesEmptyBody">Опублікуй свою гру або зачекай, поки хтось відкриє нову. Список оновлюється автоматично.</p>
+                  <div class="empty-state__meta">
+                    <span i18n="@@waitingOpenGamesEmptyBoard">Твоє поле: {{ config.board.cols }}×{{ config.board.rows }}</span>
+                    <span i18n="@@waitingOpenGamesEmptyPalette">Палітра: {{ config.paletteSize }} кольорів</span>
+                  </div>
+                  <div class="empty-state__actions">
+                    <button
+                      mat-raised-button
+                      color="primary"
+                      type="button"
+                      [disabled]="!canPublishOwnGame"
+                      (click)="onPublishOwnGame()"
+                      i18n="@@waitingPublishGame">
+                      Опублікувати власну гру
                     </button>
-                    <button mat-stroked-button type="button" (click)="onReject()" i18n="@@waitingReject">Відхилити</button>
-                    <button mat-raised-button color="primary" type="button" [disabled]="!canStart" (click)="onStartGame()" i18n="@@waitingStartGame">
-                      Почати гру
+                    <button mat-stroked-button type="button" (click)="onBackToSetup()" i18n="@@waitingBackToSetup">
+                      Назад до налаштувань
                     </button>
                   </div>
                 </div>
               }
+            </div>
+
+            @if (errorMessage) {
+              <p class="error">{{ errorMessage }}</p>
+            }
+
+            <div class="footer-actions">
+              <button mat-stroked-button type="button" (click)="onBackToSetup()" i18n="@@waitingBackToSetup">
+                Назад до налаштувань
+              </button>
             </div>
           </div>
         </mat-tab>
         <mat-tab i18n-label="@@waitingInfoTab" label="Info">
           <div class="info">
             <p i18n="@@waitingInfoOne">Online режим використовує WS game session.</p>
-            <p i18n="@@waitingInfoTwo">Поділись Lobby code з іншим клієнтом для join.</p>
+            <p i18n="@@waitingInfoTwo">Опублікуй свою гру або обери вільну гру зі списку відкритих ігор.</p>
           </div>
         </mat-tab>
       </mat-tab-group>

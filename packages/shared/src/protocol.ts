@@ -15,6 +15,17 @@ export interface CreateGameRequest {
   };
 }
 
+export interface PublishOpenGameRequest {
+  type: 'publish_open_game';
+  payload: {
+    cols: number;
+    rows: number;
+    paletteSize: number;
+    seed: number;
+    playerName?: string;
+  };
+}
+
 export interface MoveRequest {
   type: 'move';
   payload: {
@@ -28,6 +39,35 @@ export interface JoinGameRequest {
   payload: {
     sessionId: SessionId;
     playerName?: string;
+  };
+}
+
+export interface RequestOpenGameJoinRequest {
+  type: 'request_open_game_join';
+  payload: {
+    sessionId: SessionId;
+    playerName?: string;
+  };
+}
+
+export interface CancelOpenGameJoinRequest {
+  type: 'cancel_open_game_join';
+  payload: {
+    sessionId: SessionId;
+  };
+}
+
+export interface ConfirmOpenGameJoinRequest {
+  type: 'confirm_open_game_join';
+  payload: {
+    sessionId: SessionId;
+  };
+}
+
+export interface RejectOpenGameJoinRequest {
+  type: 'reject_open_game_join';
+  payload: {
+    sessionId: SessionId;
   };
 }
 
@@ -55,11 +95,30 @@ export interface RematchRequest {
 
 export type ClientEvent =
   | CreateGameRequest
+  | PublishOpenGameRequest
   | MoveRequest
   | JoinGameRequest
+  | RequestOpenGameJoinRequest
+  | CancelOpenGameJoinRequest
+  | ConfirmOpenGameJoinRequest
+  | RejectOpenGameJoinRequest
   | SetReadyRequest
   | StartGameRequest
   | RematchRequest;
+
+export type OpenGameStatus = 'free' | 'joining' | 'confirmed';
+
+export interface OpenGameListItem {
+  sessionId: SessionId;
+  mode: 'online';
+  hostName: string;
+  guestName?: string;
+  cols: number;
+  rows: number;
+  paletteSize: number;
+  status: OpenGameStatus;
+  createdAt: string;
+}
 
 export interface GameCreatedEvent {
   type: 'game_created';
@@ -104,12 +163,19 @@ export interface LobbyStateEvent {
     sessionId: SessionId;
     hostConnected: boolean;
     guestConnected: boolean;
-    hostReady: boolean;
-    guestReady: boolean;
     canStart: boolean;
     started: boolean;
+    published: boolean;
+    openGameStatus?: OpenGameStatus;
     hostName: string;
     guestName?: string;
+  };
+}
+
+export interface OpenGamesSnapshotEvent {
+  type: 'open_games_snapshot';
+  payload: {
+    games: OpenGameListItem[];
   };
 }
 
@@ -147,6 +213,7 @@ export type ServerEvent =
   | GameOverEvent
   | GameJoinedEvent
   | LobbyStateEvent
+  | OpenGamesSnapshotEvent
   | GameStartedEvent
   | RematchStartedEvent
   | ErrorEvent;
