@@ -12,6 +12,7 @@ RUN npm run build -- --configuration production
 FROM nginx:alpine
 
 ENV FILLER_WS_URL=
+ENV FILLER_API_URL=
 
 # Angular 19 (browser output)
 COPY --from=build /app/dist/filler/browser/ /usr/share/nginx/html
