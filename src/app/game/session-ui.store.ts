@@ -204,8 +204,8 @@ export class SessionUiStore {
   }
 
   private toPlayerNames(players: UiPlayerViewState[]): Record<PlayerId, string> {
-    const playerOne = players.find((player) => player.id === 1)?.name ?? 'Player 1';
-    const playerTwo = players.find((player) => player.id === 2)?.name ?? 'Player 2';
+    const playerOne = players.find((player) => player.id === 1)?.name ?? $localize`:@@playerFallbackName:Гравець ${1}:playerId:`;
+    const playerTwo = players.find((player) => player.id === 2)?.name ?? $localize`:@@playerFallbackName:Гравець ${2}:playerId:`;
     return {
       1: playerOne,
       2: playerTwo

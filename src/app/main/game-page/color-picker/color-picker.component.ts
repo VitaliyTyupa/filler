@@ -16,6 +16,20 @@ export class ColorPickerComponent {
 
   constructor(readonly sessionUiStore: SessionUiStore) {}
 
+  selfLabel(name: string): string {
+    return $localize`:@@selfLabel:Я ${name}:name:`;
+  }
+
+  opponentLabel(name: string): string {
+    return $localize`:@@opponentLabel:Проти ${name}:name:`;
+  }
+
+  connectionStatus(status: 'connected' | 'disconnected'): string {
+    return status === 'connected'
+      ? $localize`:@@playerConnected:Підключений`
+      : $localize`:@@playerDisconnected:Відключений`;
+  }
+
   handleColorPick(colorIndex: number, colorHex: string): void {
     const self = this.sessionUiStore.selfPlayer();
     if (!self) {

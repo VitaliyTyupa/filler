@@ -1,11 +1,11 @@
 export const BOARD_PRESETS: Array<{ label: string; cols: number; rows: number }> = [
-  { label: '25×40 Для Мобілки', cols: 25, rows: 40 },
+  { label: $localize`:@@boardPresetMobile:25×40 Для Мобілки`, cols: 25, rows: 40 },
   { label: '25×20', cols: 25, rows: 20 },
   { label: '50×40', cols: 50, rows: 40 },
   { label: '80×70', cols: 80, rows: 70 },
   { label: '100×85', cols: 100, rows: 85 },
   { label: '220×200', cols: 220, rows: 200 },
-  { label: '10×10 Тестування', cols: 10, rows: 10 }
+  { label: $localize`:@@boardPresetTesting:10×10 Тестування`, cols: 10, rows: 10 }
 ];
 
 export const DEFAULT_PALETTE_10: string[] = [

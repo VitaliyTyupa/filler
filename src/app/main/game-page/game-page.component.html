@@ -2,7 +2,9 @@
   <fil-color-picker
     (colorPick)="onColorPick($event)"
   ></fil-color-picker>
+  <p class="board-hint board-hint--top">{{ playerOneStartHint }}</p>
   <div class="board" #boardContainer>
     <canvas #boardCanvas></canvas>
   </div>
+  <p class="board-hint board-hint--bottom">{{ playerTwoStartHint }}</p>
 </div>

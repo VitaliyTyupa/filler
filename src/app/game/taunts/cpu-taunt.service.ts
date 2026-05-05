@@ -66,7 +66,7 @@ export class CpuTauntService {
     }
 
     this.isShowing = true;
-    const ref = this.snackBar.open(`🤖: ${message}`, undefined, {
+    const ref = this.snackBar.open(`${$localize`:@@tauntPrefix:🤖:`} ${message}`, undefined, {
       duration: this.cooldownMs,
       horizontalPosition: 'center',
       verticalPosition: 'top',

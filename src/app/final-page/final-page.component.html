@@ -4,9 +4,9 @@
       <mat-card-header>
         <mat-card-title>
           @if (winnerName) {
-            Переміг {{ winnerName }}
+            {{ winnerLabel }} {{ winnerName }}
           } @else {
-            Нічия
+            <ng-container i18n="@@finalDraw">Нічия</ng-container>
           }
         </mat-card-title>
       </mat-card-header>
@@ -26,14 +26,14 @@
 
       <mat-card-actions align="end">
         <div class="actions">
-          <button mat-raised-button color="primary" type="button" (click)="restart()">
+          <button mat-raised-button color="primary" type="button" (click)="restart()" i18n="@@finalRestart">
             Почати гру з початку
           </button>
-          <button mat-stroked-button type="button" (click)="newGame()">Налаштувати нову гру</button>
+          <button mat-stroked-button type="button" (click)="newGame()" i18n="@@finalNewGame">Налаштувати нову гру</button>
         </div>
       </mat-card-actions>
     </mat-card>
   </section>
 } @else {
-  <p class="redirecting">Переадресація...</p>
+  <p class="redirecting" i18n="@@finalRedirecting">Переадресація...</p>
 }

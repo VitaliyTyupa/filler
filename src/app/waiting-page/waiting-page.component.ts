@@ -92,7 +92,7 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
         }
         const role = this.gameSession.getRealtimeSession()?.role;
         if (!role) {
-          this.errorMessage = 'Не вдалося визначити роль гравця';
+          this.errorMessage = $localize`:@@waitingRoleDetectFailed:Не вдалося визначити роль гравця`;
           return;
         }
         this.gameSession.setRealtimeSession({
@@ -133,6 +133,34 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
     this.realtimeService.setReady(this.lobbyCode, this.isReady);
   }
 
+  booleanLabel(value: boolean): string {
+    return value
+      ? $localize`:@@commonYes:так`
+      : $localize`:@@commonNo:ні`;
+  }
+
+  opponentSettingsNotice(config: GameSettings): string {
+    return $localize`:@@waitingOpponentSettingsNotice:Гра буде за налаштуваннями суперника: поле ${config.board.cols}:cols:×${config.board.rows}:rows:, палітра на ${config.paletteSize}:paletteSize: кольорів.`;
+  }
+
+  connectedStatusText(): string {
+    return $localize`:@@waitingConnected:Connected: host=${this.booleanLabel(this.hostConnected)}:host:, guest=${this.booleanLabel(this.guestConnected)}:guest:`;
+  }
+
+  readyStatusText(): string {
+    return $localize`:@@waitingReady:Ready: ${this.booleanLabel(this.isReady)}:ready:`;
+  }
+
+  pendingGuestLabel(): string {
+    return $localize`:@@waitingPendingGuest:Очікується...`;
+  }
+
+  readyToggleLabel(): string {
+    return this.isReady
+      ? $localize`:@@waitingToggleNotReady:Not Ready`
+      : $localize`:@@waitingToggleReady:Ready`;
+  }
+
   async onJoinByCode(): Promise<void> {
     const code = this.joinCode.trim();
     if (!code) {
@@ -145,7 +173,7 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       const joined = await this.realtimeService.joinGame(code, this.settings?.players.find((player) => player.id === 1)?.name);
       this.isJoining = false;
       if (!joined) {
-        this.errorMessage = 'Lobby не знайдено';
+        this.errorMessage = $localize`:@@waitingLobbyNotFound:Lobby не знайдено`;
         return;
       }
 
@@ -164,7 +192,7 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       this.realtimeService.setReady(this.lobbyCode, false);
     } catch (error) {
       this.isJoining = false;
-      this.errorMessage = error instanceof Error ? error.message : 'Не вдалося підключитись до lobby';
+      this.errorMessage = error instanceof Error ? error.message : $localize`:@@waitingLobbyJoinFailed:Не вдалося підключитись до lobby`;
     }
   }
 
@@ -216,7 +244,7 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       this.isReady = false;
       this.realtimeService.setReady(this.lobbyCode, false);
     } catch (error) {
-      this.errorMessage = error instanceof Error ? error.message : 'Не вдалося створити lobby';
+      this.errorMessage = error instanceof Error ? error.message : $localize`:@@waitingLobbyCreateFailed:Не вдалося створити lobby`;
       this.isWaiting = false;
     }
   }
@@ -238,11 +266,16 @@ export class WaitingPageComponent implements OnInit, OnDestroy {
       players: [
         {
           id: 1,
-          name: hostName?.trim() || currentSettings.players.find((player) => player.id === 1)?.name || 'Player 1'
+          name: hostName?.trim()
+            || currentSettings.players.find((player) => player.id === 1)?.name
+            || $localize`:@@playerFallbackName:Гравець ${1}:playerId:`
         },
         {
           id: 2,
-          name: guestName?.trim() || currentSettings.players[1]?.name || currentSettings.players[0]?.name || 'Player 2'
+          name: guestName?.trim()
+            || currentSettings.players[1]?.name
+            || currentSettings.players[0]?.name
+            || $localize`:@@playerFallbackName:Гравець ${2}:playerId:`
         }
       ]
     };

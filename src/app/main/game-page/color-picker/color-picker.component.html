@@ -8,11 +8,11 @@
       <mat-card-content>
         <div class="player-header">
           <div>
-            <div class="player-name">Я {{ selfPlayer.name }}</div>
-            <div class="player-status">{{ selfPlayer.status === 'connected' ? 'Підключений' : 'Відключений' }}</div>
+            <div class="player-name">{{ selfLabel(selfPlayer.name) }}</div>
+            <div class="player-status">{{ connectionStatus(selfPlayer.status) }}</div>
           </div>
           <div class="last-color-block">
-            <span class="meta-label">Останній колір</span>
+            <span class="meta-label" i18n="@@playerLastColor">Останній колір</span>
             <span
               class="last-color-swatch"
               [style.background-color]="selfPlayer.lastColorIndex !== null ? sessionUiStore.state().palette[selfPlayer.lastColorIndex] : 'transparent'"
@@ -22,15 +22,15 @@
 
         <div class="player-meta">
           <div class="meta-item">
-            <span class="meta-label">Очки</span>
+            <span class="meta-label" i18n="@@playerPoints">Очки</span>
             <span class="meta-value">{{ selfPlayer.score }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Ходи</span>
+            <span class="meta-label" i18n="@@playerMoves">Ходи</span>
             <span class="meta-value">{{ selfPlayer.moveCount }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Останній хід</span>
+            <span class="meta-label" i18n="@@playerLastMove">Останній хід</span>
             <span class="meta-value">{{ selfPlayer.lastMoveNumber ?? '-' }}</span>
           </div>
         </div>
@@ -56,11 +56,11 @@
       <mat-card-content>
         <div class="player-header">
           <div>
-            <div class="player-name">Проти {{ opponentPlayer.name }}</div>
-            <div class="player-status">{{ opponentPlayer.status === 'connected' ? 'Підключений' : 'Відключений' }}</div>
+            <div class="player-name">{{ opponentLabel(opponentPlayer.name) }}</div>
+            <div class="player-status">{{ connectionStatus(opponentPlayer.status) }}</div>
           </div>
           <div class="last-color-block">
-            <span class="meta-label">Останній колір</span>
+            <span class="meta-label" i18n="@@playerLastColor">Останній колір</span>
             <span
               class="last-color-swatch"
               [style.background-color]="opponentPlayer.lastColorIndex !== null ? sessionUiStore.state().palette[opponentPlayer.lastColorIndex] : 'transparent'"
@@ -70,11 +70,11 @@
 
         <div class="player-meta compact-meta">
           <div class="meta-item">
-            <span class="meta-label">Очки</span>
+            <span class="meta-label" i18n="@@playerPoints">Очки</span>
             <span class="meta-value">{{ opponentPlayer.score }}</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Ходи</span>
+            <span class="meta-label" i18n="@@playerMoves">Ходи</span>
             <span class="meta-value">{{ opponentPlayer.moveCount }}</span>
           </div>
         </div>

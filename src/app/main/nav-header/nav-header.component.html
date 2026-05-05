@@ -8,18 +8,33 @@
   <span class="spacer"></span>
   <ng-container *ngIf="user$ | async as user; else loginAction">
     <div class="auth-actions">
+      <button
+        mat-icon-button
+        type="button"
+        [matMenuTriggerFor]="languageMenu"
+        i18n-aria-label="@@navLanguageAria"
+        aria-label="Змінити мову"
+      >
+        <mat-icon>language</mat-icon>
+      </button>
       <span class="username">{{ user.username }}</span>
-      <button class="avatar" mat-icon-button type="button" (click)="openProfile()" aria-label="Профіль">
+      <button class="avatar" mat-icon-button type="button" (click)="openProfile()" i18n-aria-label="@@navProfileAria" aria-label="Профіль">
         <mat-icon>account_circle</mat-icon>
       </button>
-      <button mat-icon-button type="button" (click)="logout()" aria-label="Вийти">
+      <button mat-icon-button type="button" (click)="logout()" i18n-aria-label="@@navLogoutAria" aria-label="Вийти">
         <mat-icon>logout</mat-icon>
       </button>
     </div>
   </ng-container>
   <ng-template #loginAction>
-    <button mat-icon-button type="button" (click)="login()" aria-label="Логін">
+    <button mat-icon-button type="button" (click)="login()" i18n-aria-label="@@navLoginAria" aria-label="Логін">
       <mat-icon>login</mat-icon>
     </button>
   </ng-template>
 </mat-toolbar>
+
+<mat-menu #languageMenu="matMenu">
+  @for (language of languages; track language.code) {
+    <button mat-menu-item type="button" (click)="changeLanguage(language.code)">{{ language.label }}</button>
+  }
+</mat-menu>

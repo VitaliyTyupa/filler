@@ -1,34 +1,47 @@
-<section class="profile-page" *ngIf="stats as data">
+<section class="profile-page">
   <mat-card>
+    <h2 i18n="@@profileLanguageTitle">Мова</h2>
+    <p i18n="@@profileLanguageDescription">Мова буде застосована після перезавантаження сторінки.</p>
+    <mat-form-field appearance="outline">
+      <mat-label i18n="@@profileLanguageSelect">Мова інтерфейсу</mat-label>
+      <mat-select [value]="languageService.currentLanguage()" (valueChange)="changeLanguage($event)">
+        @for (language of languages; track language.code) {
+          <mat-option [value]="language.code">{{ language.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </mat-card>
+
+  <mat-card *ngIf="stats as data">
     <h1>{{ data.user.username }}</h1>
     <div class="stats-grid">
       <div class="stat-item">
-        <span class="label">Ігор зіграно</span>
+        <span class="label" i18n="@@profileStatsPlayed">Ігор зіграно</span>
         <span class="value">{{ data.summary.gamesPlayed }}</span>
       </div>
       <div class="stat-item">
-        <span class="label">Перемог</span>
+        <span class="label" i18n="@@profileStatsWins">Перемог</span>
         <span class="value">{{ data.summary.wins }}</span>
       </div>
       <div class="stat-item">
-        <span class="label">Загалом очок виграно</span>
+        <span class="label" i18n="@@profileStatsPointsWon">Загалом очок виграно</span>
         <span class="value">{{ data.summary.totalPointsWon }}</span>
       </div>
       <div class="stat-item">
-        <span class="label">Найбільше за гру</span>
+        <span class="label" i18n="@@profileStatsBestGame">Найбільше за гру</span>
         <span class="value">{{ data.summary.bestSingleGamePoints }}</span>
       </div>
     </div>
   </mat-card>
 
-  <mat-card class="leaderboard-card">
-    <h2>Рейтинг гравців (ТОП 5)</h2>
+  <mat-card class="leaderboard-card" *ngIf="stats as data">
+    <h2 i18n="@@profileLeaderboardTitle">Рейтинг гравців (ТОП 5)</h2>
     <div class="leaderboard-head">
-      <span>Місце</span>
-      <span>Ім'я</span>
-      <span>Ігор</span>
-      <span>Перемог</span>
-      <span>Очки</span>
+      <span i18n="@@profilePlace">Місце</span>
+      <span i18n="@@profileName">Ім'я</span>
+      <span i18n="@@profileGames">Ігор</span>
+      <span i18n="@@profileWins">Перемог</span>
+      <span i18n="@@profilePoints">Очки</span>
     </div>
     <div class="leaderboard-row" *ngFor="let player of data.leaderboard">
       <span>{{ player.place }}</span>

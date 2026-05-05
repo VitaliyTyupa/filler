@@ -119,7 +119,7 @@ export class GameRealtimeService {
     return {
       sessionId,
       state,
-      hostName: input.playerName?.trim() || 'Player 1'
+      hostName: input.playerName?.trim() || $localize`:@@playerFallbackName:Гравець ${1}:playerId:`
     };
   }
 

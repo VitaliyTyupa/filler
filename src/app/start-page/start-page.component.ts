@@ -42,16 +42,16 @@ export class StartPageComponent {
   readonly paletteSizes: Array<5 | 7 | 10> = [5, 7, 10];
   readonly modes: GameMode[] = ['cpu', 'local', 'online'];
   readonly modeLabels: Record<GameMode, string> = {
-    cpu: 'З комп\'ютером',
-    local: 'З іншим гравцем на одному комп\'ютері',
-    online: 'З іншим гравцем онлайн'
+    cpu: $localize`:@@startModeCpu:З комп'ютером`,
+    local: $localize`:@@startModeLocal:З іншим гравцем на одному комп'ютері`,
+    online: $localize`:@@startModeOnline:З іншим гравцем онлайн`
   };
   readonly cpuDifficulties: CpuDifficulty[] = ['standard', 'master', 'champion', 'ultra'];
   readonly cpuDifficultyLabels: Record<CpuDifficulty, string> = {
-    standard: 'Standard',
-    master: 'Master',
-    champion: 'Champion',
-    ultra: 'Ultra Champion'
+    standard: $localize`:@@startCpuDifficultyStandard:Standard`,
+    master: $localize`:@@startCpuDifficultyMaster:Master`,
+    champion: $localize`:@@startCpuDifficultyChampion:Champion`,
+    ultra: $localize`:@@startCpuDifficultyUltra:Ultra Champion`
   };
 
   readonly form: FormGroup<{
@@ -133,14 +133,14 @@ export class StartPageComponent {
     if (mode === 'cpu') {
       return [
         { id: 1, name: player1 },
-        { id: 2, name: 'CPU', isCpu: true }
+        { id: 2, name: $localize`:@@cpuName:CPU`, isCpu: true }
       ];
     }
 
     if (mode === 'online') {
       return [
         { id: 1, name: player1 },
-        { id: 2, name: 'Player 2' }
+        { id: 2, name: $localize`:@@playerFallbackName:Гравець ${2}:playerId:` }
       ];
     }
 

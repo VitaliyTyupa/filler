@@ -56,7 +56,8 @@ export class FinalPageComponent implements OnInit {
   }
 
   getPlayerName(playerId: 1 | 2): string {
-    const fallbackName = this.settings?.players.find((player) => player.id === playerId)?.name ?? `Player ${playerId}`;
+    const fallbackName = this.settings?.players.find((player) => player.id === playerId)?.name
+      ?? $localize`:@@playerFallbackName:Гравець ${playerId}:playerId:`;
     if (this.settings?.mode !== 'online') {
       return fallbackName;
     }
@@ -122,5 +123,9 @@ export class FinalPageComponent implements OnInit {
     }
 
     return 1;
+  }
+
+  get winnerLabel(): string {
+    return $localize`:@@finalWinnerLabel:Переміг`;
   }
 }

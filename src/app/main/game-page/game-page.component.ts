@@ -122,7 +122,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
           created = {
             sessionId: existing.sessionId,
             state: cached,
-            hostName: existing.hostName ?? 'Player 1',
+            hostName: existing.hostName ?? $localize`:@@playerFallbackName:Гравець ${1}:playerId:`,
             guestName: existing.guestName
           };
         } else {
@@ -185,7 +185,7 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
       });
       this.sessionFacade.setPlayerNames(created.sessionId, playerNames ?? {
         1: created.hostName,
-        2: created.guestName ?? 'Player 2'
+        2: created.guestName ?? $localize`:@@playerFallbackName:Гравець ${2}:playerId:`
       });
       this.tryInitGrid();
     } catch {
@@ -243,6 +243,14 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  get playerOneStartHint(): string {
+    return $localize`:@@gamePlayerOneStartHint:Гравець 1 ${this.getPlayerName(1)}:playerName: починає гру тут`;
+  }
+
+  get playerTwoStartHint(): string {
+    return $localize`:@@gamePlayerTwoStartHint:Гравець 2 ${this.getPlayerName(2)}:playerName: починає гру тут`;
+  }
+
   private applyGridDiff(diff: GameDiff): void {
     if (!this.grid || !this.state) {
       return;
@@ -275,6 +283,11 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  private getPlayerName(playerId: 1 | 2): string {
+    const fallbackName = $localize`:@@playerFallbackName:Гравець ${playerId}:playerId:`;
+    return this.settings?.players.find((player) => player.id === playerId)?.name ?? fallbackName;
+  }
+
   private tryInitGrid(): void {
     if (!this.viewReady || !this.boardContainer || !this.boardCanvas || !this.state || this.grid) {
       return;
@@ -301,12 +314,12 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const session = this.gameSession.getRealtimeSession();
-    const hostFallback = this.settings.players.find((player) => player.id === 1)?.name ?? 'Player 1';
+    const hostFallback = this.settings.players.find((player) => player.id === 1)?.name ?? $localize`:@@playerFallbackName:Гравець ${1}:playerId:`;
     const guestFallback = session?.role === 'guest'
       ? this.settings.players.find((player) => player.id === 2)?.name
         ?? this.settings.players.find((player) => player.id === 1)?.name
-        ?? 'Player 2'
-      : this.settings.players.find((player) => player.id === 2)?.name ?? 'Player 2';
+        ?? $localize`:@@playerFallbackName:Гравець ${2}:playerId:`
+      : this.settings.players.find((player) => player.id === 2)?.name ?? $localize`:@@playerFallbackName:Гравець ${2}:playerId:`;
 
     this.settings = {
       ...this.settings,
@@ -338,27 +351,29 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const session = this.gameSession.getRealtimeSession();
     const role = session?.role;
+    const playerOneFallback = $localize`:@@playerFallbackName:Гравець ${1}:playerId:`;
+    const playerTwoFallback = $localize`:@@playerFallbackName:Гравець ${2}:playerId:`;
     const localName = role === 'guest'
       ? this.settings.players.find((player) => player.id === 2)?.name
         ?? session?.guestName
-        ?? 'Player 2'
+        ?? playerTwoFallback
       : this.settings.players.find((player) => player.id === 1)?.name
         ?? session?.hostName
-        ?? 'Player 1';
-    const resolvedHostName = hostName && hostName !== 'Player 1'
+        ?? playerOneFallback;
+    const resolvedHostName = hostName && hostName !== playerOneFallback
       ? hostName
-      : session?.hostName && session.hostName !== 'Player 1'
+      : session?.hostName && session.hostName !== playerOneFallback
         ? session.hostName
       : role === 'host'
         ? localName
-        : 'Player 1';
-    const resolvedGuestName = guestName && guestName !== 'Player 2'
+        : playerOneFallback;
+    const resolvedGuestName = guestName && guestName !== playerTwoFallback
       ? guestName
-      : session?.guestName && session.guestName !== 'Player 2'
+      : session?.guestName && session.guestName !== playerTwoFallback
         ? session.guestName
       : role === 'guest'
         ? localName
-        : 'Player 2';
+        : playerTwoFallback;
 
     return {
       1: resolvedHostName,

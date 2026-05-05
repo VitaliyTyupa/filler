@@ -28,8 +28,8 @@ export class GameSessionFacade {
       state: input.state,
       ownPlayerId: this.resolveOwnPlayerId(input.settings, input.state, input.ownPlayerId),
       playerNames: input.playerNames ?? {
-        1: input.settings.players.find((player) => player.id === 1)?.name ?? 'Player 1',
-        2: input.settings.players.find((player) => player.id === 2)?.name ?? 'Player 2'
+        1: input.settings.players.find((player) => player.id === 1)?.name ?? $localize`:@@playerFallbackName:Гравець ${1}:playerId:`,
+        2: input.settings.players.find((player) => player.id === 2)?.name ?? $localize`:@@playerFallbackName:Гравець ${2}:playerId:`
       }
     });
   }
