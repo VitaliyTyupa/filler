@@ -183,10 +183,15 @@ export class GamePageComponent implements OnInit, AfterViewInit, OnDestroy {
         ownPlayerId: this.localOnlinePlayerId ?? null,
         playerNames
       });
-      this.sessionFacade.setPlayerNames(created.sessionId, playerNames ?? {
-        1: created.hostName,
-        2: created.guestName ?? $localize`:@@playerFallbackName:Гравець ${2}:playerId:`
-      });
+      this.sessionFacade.setPlayerNames(
+        created.sessionId,
+        playerNames ?? {
+          1: this.settings.players.find((player) => player.id === 1)?.name ?? created.hostName,
+          2: this.settings.players.find((player) => player.id === 2)?.name
+            ?? created.guestName
+            ?? $localize`:@@playerFallbackName:Гравець ${2}:playerId:`
+        }
+      );
       this.tryInitGrid();
     } catch {
       if (this.sessionId) {

@@ -1,18 +1,41 @@
 @use '@angular/material' as mat;
 
+:root {
+  --font-body: 'Nunito', 'Roboto', sans-serif;
+  --font-accent: 'Baloo 2', 'Nunito', sans-serif;
+}
+
 html {
   color-scheme: light dark;
   @include mat.theme((
     color: mat.$spring-green-palette,
-    typography: Roboto,
+    typography: 'Nunito',
     density: 0
   ));
 }
+
 body {
   margin: 0;
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+.board-hint {
+  font-family: var(--font-accent);
+  letter-spacing: 0.02em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 .cpu-taunt {
   font-weight: 600;
   text-align: center;
+  font-family: var(--font-accent);
 }

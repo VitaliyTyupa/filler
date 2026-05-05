@@ -42,16 +42,6 @@ export class NavHeaderComponent {
     return this.gameSession.hasSettings();
   }
 
-  restart(): void {
-    if (!this.hasSettings) {
-      this.newGame();
-      return;
-    }
-
-    this.gameSession.clearResult();
-    this.router.navigateByUrl('/game');
-  }
-
   newGame(): void {
     this.gameSession.clear();
     this.router.navigateByUrl('/start');
@@ -63,7 +53,7 @@ export class NavHeaderComponent {
 
   logout(): void {
     this.authService.logout();
-    void this.router.navigateByUrl('/start');
+    void this.router.navigateByUrl('/login');
   }
 
   openProfile(): void {

@@ -26,6 +26,7 @@
 }
 
 .label {
+  font-family: var(--font-accent);
   font-weight: 600;
 }
 
@@ -50,6 +51,7 @@
   border-radius: 10px;
   background: rgba(25, 118, 210, 0.08);
   color: rgba(0, 0, 0, 0.82);
+  font-family: var(--font-accent);
 }
 
 .spinner {

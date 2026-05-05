@@ -1,22 +1,19 @@
 <mat-toolbar>
+  <button
+    mat-icon-button
+    type="button"
+    [matMenuTriggerFor]="languageMenu"
+    i18n-aria-label="@@navLanguageAria"
+    aria-label="Змінити мову"
+  >
+    <mat-icon>language</mat-icon>
+  </button>
   <div class="logo">
-    <button mat-button (click)="newGame()">
-      <mat-icon>autorenew</mat-icon>
-    </button>
-    <span class="brand">Filler</span>
+    <button class="brand-button" mat-button type="button" (click)="newGame()">Filler</button>
   </div>
   <span class="spacer"></span>
   <ng-container *ngIf="user$ | async as user; else loginAction">
     <div class="auth-actions">
-      <button
-        mat-icon-button
-        type="button"
-        [matMenuTriggerFor]="languageMenu"
-        i18n-aria-label="@@navLanguageAria"
-        aria-label="Змінити мову"
-      >
-        <mat-icon>language</mat-icon>
-      </button>
       <span class="username">{{ user.username }}</span>
       <button class="avatar" mat-icon-button type="button" (click)="openProfile()" i18n-aria-label="@@navProfileAria" aria-label="Профіль">
         <mat-icon>account_circle</mat-icon>

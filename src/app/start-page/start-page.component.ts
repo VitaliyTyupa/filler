@@ -40,10 +40,9 @@ type BoardPresetOption = (typeof BOARD_PRESETS)[number];
 export class StartPageComponent {
   readonly boardPresets = BOARD_PRESETS;
   readonly paletteSizes: Array<5 | 7 | 10> = [5, 7, 10];
-  readonly modes: GameMode[] = ['cpu', 'local', 'online'];
-  readonly modeLabels: Record<GameMode, string> = {
+  readonly modes: Array<'cpu' | 'online'> = ['cpu', 'online'];
+  readonly modeLabels: Record<'cpu' | 'online', string> = {
     cpu: $localize`:@@startModeCpu:З комп'ютером`,
-    local: $localize`:@@startModeLocal:З іншим гравцем на одному комп'ютері`,
     online: $localize`:@@startModeOnline:З іншим гравцем онлайн`
   };
   readonly cpuDifficulties: CpuDifficulty[] = ['standard', 'master', 'champion', 'ultra'];
@@ -59,7 +58,6 @@ export class StartPageComponent {
     boardPreset: FormControl<BoardPresetOption>;
     paletteSize: FormControl<5 | 7 | 10>;
     player1Name: FormControl<string>;
-    player2Name: FormControl<string>;
     cpuDifficulty: FormControl<CpuDifficulty>;
   }>;
 
@@ -79,19 +77,8 @@ export class StartPageComponent {
       cpuDifficulty: this.fb.control<CpuDifficulty>('standard', {
         validators: Validators.required,
         nonNullable: true
-      }),
-      player2Name: this.fb.control({ value: '', disabled: true }, {
-        validators: [this.nameValidator(false)],
-        nonNullable: true
       })
     });
-
-    this.form.controls.mode.valueChanges.subscribe((mode) => this.handleModeChange(mode));
-    this.handleModeChange(this.form.controls.mode.value);
-  }
-
-  get isLocalMode(): boolean {
-    return this.form.controls.mode.value === 'local';
   }
 
   get isCpuMode(): boolean {
@@ -102,10 +89,6 @@ export class StartPageComponent {
     return this.form.controls.player1Name;
   }
 
-  get player2Control(): FormControl<string> {
-    return this.form.controls.player2Name;
-  }
-
   onSubmit(): void {
     if (this.form.invalid) {
       return;
@@ -113,12 +96,11 @@ export class StartPageComponent {
 
     const rawValue = this.form.getRawValue();
     const player1Name = rawValue.player1Name.trim();
-    const player2Name = (rawValue.player2Name ?? '').trim();
     const settings: GameSettings = {
       mode: rawValue.mode,
       board: { cols: rawValue.boardPreset.cols, rows: rawValue.boardPreset.rows },
       paletteSize: rawValue.paletteSize,
-      players: this.buildPlayers(rawValue.mode, player1Name, player2Name),
+      players: this.buildPlayers(rawValue.mode, player1Name),
       cpuDifficulty: rawValue.cpuDifficulty
     };
 
@@ -129,7 +111,7 @@ export class StartPageComponent {
     this.router.navigateByUrl(targetRoute);
   }
 
-  private buildPlayers(mode: GameMode, player1: string, player2: string): GameSettings['players'] {
+  private buildPlayers(mode: GameMode, player1: string): GameSettings['players'] {
     if (mode === 'cpu') {
       return [
         { id: 1, name: player1 },
@@ -146,21 +128,8 @@ export class StartPageComponent {
 
     return [
       { id: 1, name: player1 },
-      { id: 2, name: player2 }
+      { id: 2, name: $localize`:@@playerFallbackName:Гравець ${2}:playerId:` }
     ];
-  }
-
-  private handleModeChange(mode: GameMode): void {
-    if (mode === 'local') {
-      this.form.controls.player2Name.enable({ emitEvent: false });
-      this.form.controls.player2Name.setValidators([this.nameValidator(true)]);
-    } else {
-      this.form.controls.player2Name.setValue('', { emitEvent: false });
-      this.form.controls.player2Name.setValidators([this.nameValidator(false)]);
-      this.form.controls.player2Name.disable({ emitEvent: false });
-    }
-
-    this.form.controls.player2Name.updateValueAndValidity({ emitEvent: false });
   }
 
   private nameValidator(required: boolean) {

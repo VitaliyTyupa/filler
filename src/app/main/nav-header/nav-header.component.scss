@@ -4,9 +4,22 @@ mat-toolbar {
   box-sizing: border-box;
 }
 
+.logo {
+  display: flex;
+  align-items: center;
+}
+
 .brand {
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+.brand-button {
+  font-family: var(--font-accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 1.45rem;
+  line-height: 1;
 }
 
 .spacer {

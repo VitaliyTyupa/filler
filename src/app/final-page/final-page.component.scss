@@ -24,7 +24,13 @@
   box-shadow: 0 0 0 1px rgba(25, 118, 210, 0.24);
 }
 
+.score-card h2 {
+  font-family: var(--font-accent);
+  margin-top: 0;
+}
+
 .score {
+  font-family: var(--font-accent);
   font-size: 32px;
   margin: 6px 0 0;
 }
