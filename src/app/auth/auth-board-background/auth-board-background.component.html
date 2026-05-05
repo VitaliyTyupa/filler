@@ -1,0 +1,32 @@
+<div class="auth-board-bg" aria-hidden="true">
+  <div class="auth-board-bg__glow auth-board-bg__glow--top"></div>
+  <div class="auth-board-bg__glow auth-board-bg__glow--bottom"></div>
+
+  <div class="auth-board-bg__board">
+    @for (cell of cells; track cell.id) {
+      <div
+        class="auth-board-bg__cell"
+        [style.--wave-one-delay]="cell.waveOneDelay"
+        [style.--wave-two-delay]="cell.waveTwoDelay"
+        [style.--idle-delay]="cell.idleDelay"
+        [style.--clash-delay]="cell.clashDelay"
+        [class.is-mint]="cell.tone === 'mint'"
+        [class.is-sky]="cell.tone === 'sky'"
+        [class.is-gold]="cell.tone === 'gold'"
+        [class.is-rose]="cell.tone === 'rose'"
+        [class.is-lavender]="cell.tone === 'lavender'"
+        [class.is-peach]="cell.tone === 'peach'"
+        [class.is-region-one]="cell.region === 'one'"
+        [class.is-region-two]="cell.region === 'two'"
+        [class.is-region-contest]="cell.region === 'contest'"
+        [class.is-player-one]="cell.owner === 1"
+        [class.is-player-two]="cell.owner === 2">
+        @if (cell.marker) {
+          <span class="auth-board-bg__marker">{{ cell.marker }}</span>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="auth-board-bg__overlay"></div>
+</div>

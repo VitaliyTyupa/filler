@@ -9,6 +9,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../auth.service';
 import { localizeAuthErrorMessage } from '../auth-error-message';
+import { AuthBoardBackgroundComponent } from '../auth-board-background/auth-board-background.component';
 
 @Component({
   selector: 'fil-register-page',
@@ -20,7 +21,8 @@ import { localizeAuthErrorMessage } from '../auth-error-message';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatCardModule
+    MatCardModule,
+    AuthBoardBackgroundComponent
   ],
   templateUrl: './register-page.component.html',
   styleUrl: './register-page.component.scss'

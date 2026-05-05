@@ -1,19 +1,29 @@
 <section class="auth-page">
-  <mat-card>
-    <h1 i18n="@@loginTitle">Логін</h1>
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <mat-form-field appearance="outline">
-        <mat-label i18n="@@authUsernameLabel">Ім'я користувача</mat-label>
-        <input matInput formControlName="username" />
-      </mat-form-field>
+  <fil-auth-board-background />
 
-      <mat-form-field appearance="outline">
-        <mat-label i18n="@@authPasswordLabel">Пароль</mat-label>
-        <input matInput type="password" formControlName="password" />
-      </mat-form-field>
+  <div class="auth-stack">
+    <mat-card class="auth-card">
+      <h1 i18n="@@loginTitle">Логін</h1>
+      <form [formGroup]="form" (ngSubmit)="submit()">
+        <mat-form-field appearance="outline">
+          <mat-label i18n="@@authUsernameLabel">Ім'я користувача</mat-label>
+          <input matInput formControlName="username" />
+        </mat-form-field>
 
-      <button mat-flat-button color="primary" type="submit" [disabled]="loading" i18n="@@loginSubmit">Увійти</button>
-    </form>
-    <a routerLink="/register" i18n="@@loginCreateAccount">Створити акаунт</a>
-  </mat-card>
+        <mat-form-field appearance="outline">
+          <mat-label i18n="@@authPasswordLabel">Пароль</mat-label>
+          <input matInput type="password" formControlName="password" />
+        </mat-form-field>
+
+        <button mat-flat-button color="primary" type="submit" [disabled]="loading" i18n="@@loginSubmit">Увійти</button>
+      </form>
+      <a routerLink="/register" i18n="@@loginCreateAccount">Створити акаунт</a>
+    </mat-card>
+
+    <mat-card class="auth-card auth-card--info">
+      <h2 i18n="@@authInfoTitle">Що таке Filler?</h2>
+      <p i18n="@@authInfoBodyOne">Filler — це швидка тактична гра про захоплення території, де кожен хід змінює карту поля.</p>
+      <p i18n="@@authInfoBodyTwo">Обирай кольори, розширюй свою зону від стартового кута й не дай супернику забрати центр собі.</p>
+    </mat-card>
+  </div>
 </section>
